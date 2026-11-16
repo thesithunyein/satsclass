@@ -24,6 +24,7 @@ Only the latest commit on `main` (deployed at [satsclass.vercel.app](https://sat
 | Learner seed and keys | Learner's browser only | Generated with the browser's CSPRNG; encrypted at rest with AES-GCM; key derived from the PIN with PBKDF2-SHA256 (210,000 rounds); never sent to the server |
 | Faucet key | Server environment (`FAUCET_MNEMONIC`) | Sensitive env var, read only by the faucet route; practice sats only |
 | Bitcoin Core RPC credentials | Server environment | Never exposed to the browser |
+| Tutor questions | Sent to an AI model through Vercel AI Gateway | Only the question, the balance and public summaries of the learner's practice transactions. Messages that contain 8 or more recovery-phrase words in a row are refused on the server and never forwarded. |
 | Rate-limit state | Upstash Redis / process memory | Short-lived counters; no personal data |
 
 ### Design choices

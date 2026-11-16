@@ -40,6 +40,7 @@ In classrooms it's worse: a teacher can't ask 30 students to risk real sats, so 
 | **Encrypted on the phone** | The recovery phrase is stored with AES-GCM, keyed from a 6-digit PIN through PBKDF2 (210,000 rounds). |
 | **Built for real classrooms** | Mobile-first, works on slow networks, plain words, English and French. |
 | **Classroom mode** | A teacher opens `/teach`, students scan one QR code and pick a nickname. Three missions (get sats, back up, send to a classmate) show up live on the teacher's board. |
+| **Ask Sats, the AI tutor** | Answers beginner questions in English or French using the learner's own practice transactions (amounts, fees, confirmations). Pasted recovery phrases are blocked before they reach the model. |
 | **One-command setup** | `docker compose up` starts Bitcoin Core, LND, a block miner and the app. |
 
 ## How it works
@@ -177,6 +178,8 @@ Vercel can't run a Bitcoin node, so the hosted app uses the **Esplora** backend 
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | | from Upstash | Shared rate limits and lock |
 | `BTC_RPC_URL` / `_USER` / `_PASS` | set in Compose | | Bitcoin Core RPC |
 | `EXPLORER_URL` | | optional | Defaults to Mutinynet on Esplora |
+| `TUTOR_MODEL` | | optional | Pin an AI Gateway model; otherwise the first allowed model is used |
+| `AI_GATEWAY_API_KEY` | | optional | Only needed outside Vercel; on Vercel the project's OIDC token is used |
 
 ## Project structure
 
@@ -207,7 +210,7 @@ Practice networks only. The full threat model, known limits and how to report a 
 - [x] Guided missions with a seed backup check
 - [x] Live class progress board for teachers
 - [ ] Lightning mission (pay an invoice)
-- [ ] Plain-language AI tutor that explains your own transactions
+- [x] Plain-language AI tutor that explains your own transactions
 - [ ] More languages, reviewed by native speakers
 
 ## Contributing
