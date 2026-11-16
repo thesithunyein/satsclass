@@ -282,19 +282,6 @@ An **end-to-end integration test** also boots the full Docker stack (Bitcoin Cor
 
 Practice networks only. See the [threat model](THREAT_MODEL.md) (assets, STRIDE threats, mitigations, residual risk) and [SECURITY.md](SECURITY.md) (design choices, how to report).
 
-## Built so far
-
-- [x] Self-custodial browser wallet (create, restore, receive, send)
-- [x] Class faucet with shared rate limits
-- [x] Regtest Docker stack and hosted signet deployment
-- [x] English and French
-- [x] Teacher sessions: join a class by QR code
-- [x] Guided missions with a seed backup check
-- [x] Live class progress board for teachers
-- [x] Lightning mission: pay a real invoice over a channel (Docker mode)
-- [x] Plain-language AI tutor that explains your own transactions
-- [ ] More languages, reviewed by native speakers
-
 ## Contributing
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF_CONDUCT.md) first.
