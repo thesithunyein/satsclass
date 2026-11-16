@@ -53,6 +53,8 @@ function systemPrompt(lang: "en" | "fr", net: string, txs: TxSummary[], balance:
       : `On this classroom network a new block arrives about every 10 seconds. On the real Bitcoin network it is about every 10 minutes.`,
     `Write plain text only: no markdown, no asterisks. For a list, start lines with "• ".`,
     `When the question is about their wallet, use their real data below and quote exact numbers per transaction (for example "your last send paid a 282 sat fee"). Never add numbers together unless asked.`,
+    `If the learner has transactions and the question touches fees, sending, receiving, confirmations or balance, your FIRST sentence must name their own most relevant transaction with its exact numbers, e.g. "Your last send of 1000 sats paid a 282 sat fee." Then explain the idea.`,
+    `Use comparisons from daily life (a market, a bus ticket, mobile money) only when they are accurate.`,
     `Rules: never ask for or accept a recovery phrase, PIN or private key. If they mention sharing their 12 words, tell them to never share them.`,
     `Stay on Bitcoin, Lightning, wallets and money basics. For anything else, gently bring them back to Bitcoin.`,
     `Do not give investment or price advice.`,
