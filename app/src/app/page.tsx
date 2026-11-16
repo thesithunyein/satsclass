@@ -242,6 +242,24 @@ export default function Home() {
     }
   }
 
+  // Mission 1 is about having sats. If this wallet already holds some (e.g. got them before joining),
+  // ask the server to verify on-chain and tick it.
+  async function syncClaim() {
+    if (!cls?.joined) return false;
+    try {
+      await api(`/api/class/${cls.code}/progress`, { method: "POST", body: JSON.stringify({ learnerId: learnerId(), mission: "claim" }) });
+      setMissions((m) => ({ ...m, claim: Date.now() }));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  useEffect(() => {
+    if (joined && total > 0 && !missions.claim) syncClaim();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joined, total, missions.claim]);
+
   function leaveClass() {
     setClass(null);
     setCls(null);
@@ -531,7 +549,7 @@ export default function Home() {
             <h2 className="list-title">{t.missionsTitle}<span>{[missions.claim, missions.backup, missions.send].filter(Boolean).length}/3</span></h2>
             {missions.claim && missions.backup && missions.send && <p className="done-banner">{t.missionsDone}</p>}
             {([
-              ["claim", t.m1, t.m1Hint, getSats],
+              ["claim", t.m1, t.m1Hint, () => (total > 0 ? syncClaim() : getSats())],
               ["backup", t.m2, t.m2Hint, openCheck],
               ["send", t.m3, t.m3Hint, openSend],
             ] as const).map(([key, title, hint, action], i) => (

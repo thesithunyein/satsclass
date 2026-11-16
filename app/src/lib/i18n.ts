@@ -144,6 +144,7 @@ const en = {
     not_joined: "Join the class first.",
     forbidden: "Only the teacher can see this board.",
     wrong_words: "Those words don't match. Check your paper.",
+    not_funded: "No sats yet. Tap Get sats first.",
   },
 };
 
@@ -274,6 +275,7 @@ const fr: Dict = {
     not_joined: "Rejoignez d'abord la classe.",
     forbidden: "Seul l'enseignant peut voir ce tableau.",
     wrong_words: "Ces mots ne correspondent pas. Vérifiez votre papier.",
+    not_funded: "Pas encore de sats. Touchez d'abord Obtenir des sats.",
   },
 };
 
