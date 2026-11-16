@@ -1,0 +1,82 @@
+name: Integration (Docker, regtest + Lightning)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stack:
+    name: Full stack end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start stack
+        run: |
+          cp .env.example .env
+          sed -i 's/^BTC_RPC_PASS=.*/BTC_RPC_PASS=ci-test-password-1234567890/' .env
+          docker compose up -d --build
+
+      - name: Wait for app
+        run: |
+          for i in $(seq 1 90); do
+            if curl -fsS http://localhost:3000/api/config > /tmp/config.json; then cat /tmp/config.json; echo; break; fi
+            sleep 3
+          done
+          grep -q '"lightning":true' /tmp/config.json
+
+      - name: On-chain flow (faucet, balance)
+        run: |
+          set -euo pipefail
+          ADDR=$(docker compose exec -T bitcoind bitcoin-cli -regtest -datadir=/data -rpcuser=satsclass -rpcpassword=ci-test-password-1234567890 -rpcwallet=faucet getnewaddress learner bech32 | tr -d '\r')
+          echo "learner address: $ADDR"
+          echo "ADDR=$ADDR" >> "$GITHUB_ENV"
+          # A fresh address for the faucet claim (the one above is a faucet-wallet address; that's fine for regtest tests).
+          curl -fsS -X POST http://localhost:3000/api/faucet -H 'Content-Type: application/json' -d "{\"address\":\"$ADDR\"}" | tee /tmp/faucet.json
+          echo
+          grep -q '"txid"' /tmp/faucet.json
+          sleep 25
+          curl -fsS "http://localhost:3000/api/chain/utxos?address=$ADDR" | tee /tmp/utxos.json
+          echo
+          grep -q '"balance":[1-9]' /tmp/utxos.json
+
+      - name: Lightning flow (invoice, pay, receipt)
+        run: |
+          set -euo pipefail
+          curl -fsS "http://localhost:3000/api/lightning?address=$ADDR" | tee /tmp/lnbal.json; echo
+          grep -q '"balance":5000' /tmp/lnbal.json
+          # First invoice opens the channel: allow time.
+          for i in 1 2 3; do
+            if curl -fsS -m 150 -X POST http://localhost:3000/api/lightning/invoice > /tmp/invoice.json; then break; fi
+            echo "invoice attempt $i failed, retrying"; sleep 10
+          done
+          cat /tmp/invoice.json; echo
+          PR=$(python3 -c 'import json;print(json.load(open("/tmp/invoice.json"))["paymentRequest"])')
+          curl -fsS -m 90 -X POST http://localhost:3000/api/lightning/pay -H 'Content-Type: application/json' \
+            -d "{\"address\":\"$ADDR\",\"paymentRequest\":\"$PR\"}" | tee /tmp/paid.json
+          echo
+          python3 - <<'EOF'
+          import json
+          p = json.load(open("/tmp/paid.json"))
+          assert len(p["preimage"]) == 64, p
+          assert p["amount"] == 1000, p
+          assert p["balance"] == 5000 - 1000 - p["feeSat"], p
+          print("Lightning payment OK:", p["ms"], "ms, fee", p["feeSat"], "sat")
+          EOF
+
+      - name: Lightning rejects foreign or reused invoices
+        run: |
+          set -euo pipefail
+          PR=$(python3 -c 'import json;print(json.load(open("/tmp/invoice.json"))["paymentRequest"])')
+          CODE=$(curl -s -o /tmp/again.json -w '%{http_code}' -X POST http://localhost:3000/api/lightning/pay -H 'Content-Type: application/json' -d "{\"address\":\"$ADDR\",\"paymentRequest\":\"$PR\"}")
+          cat /tmp/again.json; echo
+          test "$CODE" != "200"
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=200
