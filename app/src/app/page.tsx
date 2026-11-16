@@ -117,6 +117,11 @@ export default function Home() {
   const [chat, setChat] = useState<{ role: "user" | "assistant"; content: string; err?: boolean }[]>([]);
   const [question, setQuestion] = useState("");
   const [thinking, setThinking] = useState(false);
+  const chatEnd = useRef<HTMLDivElement>(null);
+  // Keep the newest message in view.
+  useEffect(() => {
+    chatEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [chat, thinking]);
   const classBody = () => (joined && cls ? { classCode: cls.code, learnerId: learnerId() } : {});
 
   const fmt = (sats: number) => sats.toLocaleString(lang === "fr" ? "fr-FR" : "en-US");
@@ -736,6 +741,7 @@ export default function Home() {
                 <p className="typing" aria-label={t.tutorThinking}><i /><i /><i /></p>
               </div>
             )}
+            <div ref={chatEnd} />
           </div>
           <div className="ask-row">
             <input
