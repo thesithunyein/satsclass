@@ -39,6 +39,7 @@ In classrooms it's worse: a teacher can't ask 30 students to risk real sats, so 
 | **Real transactions** | Native SegWit (BIP84). The browser selects coins, signs, and the server only relays the signed hex. |
 | **Encrypted on the phone** | The recovery phrase is stored with AES-GCM, keyed from a 6-digit PIN through PBKDF2 (210,000 rounds). |
 | **Built for real classrooms** | Mobile-first, works on slow networks, plain words, English and French. |
+| **Classroom mode** | A teacher opens `/teach`, students scan one QR code and pick a nickname. Three missions (get sats, back up, send to a classmate) show up live on the teacher's board. |
 | **One-command setup** | `docker compose up` starts Bitcoin Core, LND, a block miner and the app. |
 
 ## How it works
@@ -202,9 +203,9 @@ Practice networks only. The full threat model, known limits and how to report a 
 - [x] Class faucet with shared rate limits
 - [x] Regtest Docker stack and hosted signet deployment
 - [x] English and French
-- [ ] Teacher sessions: join a class by QR code
-- [ ] Guided missions with a forced seed-restore check
-- [ ] Live class progress board for teachers
+- [x] Teacher sessions: join a class by QR code
+- [x] Guided missions with a seed backup check
+- [x] Live class progress board for teachers
 - [ ] Lightning mission (pay an invoice)
 - [ ] Plain-language AI tutor that explains your own transactions
 - [ ] More languages, reviewed by native speakers
