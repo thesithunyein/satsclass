@@ -98,7 +98,7 @@ export async function POST(req: Request) {
       }),
     });
     if (!res.ok) {
-      console.error("tutor gateway status", res.status);
+      console.error("tutor gateway status", res.status, (await res.text()).slice(0, 300));
       return Response.json({ error: "tutor_unavailable" }, { status: 502 });
     }
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
