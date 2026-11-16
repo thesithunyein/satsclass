@@ -49,6 +49,11 @@ export async function POST(req: Request) {
     return Response.json({ error: "faucet_misconfigured" }, { status: 500 });
   }
 
+  // The faucet never pays itself (avoids a wasted claim and a confusing error).
+  if (backend === "esplora" && FAUCET_MNEMONIC && deriveAccount(FAUCET_MNEMONIC, serverNetName()).address === address) {
+    return Response.json({ error: "faucet_self" }, { status: 400 });
+  }
+
   const ipKey = `faucet:ip:${clientIp(req)}`;
   const addrKey = `faucet:addr:${address}`;
   if (!(await rateLimit(ipKey, 10, 3600_000))) {
