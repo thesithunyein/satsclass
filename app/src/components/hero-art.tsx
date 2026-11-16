@@ -28,9 +28,9 @@ export function HeroArt({ fr = false }: { fr?: boolean }) {
           <rect x="34" y="14" width="26" height="5" rx="2.5" fill="#101735" opacity="0.15" />
           {/* balance card */}
           <rect x="13" y="28" width="68" height="46" rx="10" fill="#101735" />
-          <text x="21" y="44" fill="#FFFFFF" fillOpacity="0.6" fontSize="8" fontWeight="600">{fr ? "Solde" : "Balance"}</text>
-          <text x="21" y="62" fill="#FFFFFF" fontSize="15" fontWeight="700">{fr ? "10 000" : "10,000"}</text>
-          <text x="62" y="62" fill="#F7931A" fontSize="8" fontWeight="700">sats</text>
+          <text x="21" y="41" fill="#FFFFFF" fillOpacity="0.6" fontSize="8" fontWeight="600">{fr ? "Solde" : "Balance"}</text>
+          <text x="21" y="58" fill="#FFFFFF" fontSize="14" fontWeight="700">{fr ? "10 000" : "10,000"}</text>
+          <text x="21" y="68" fill="#F7931A" fontSize="7.5" fontWeight="700">sats</text>
           {/* buttons */}
           <rect x="13" y="82" width="32" height="14" rx="7" fill="#F7931A" />
           <rect x="49" y="82" width="32" height="14" rx="7" fill="#E7EAF6" />
