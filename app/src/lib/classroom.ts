@@ -6,8 +6,8 @@ import { getJson, hget, hgetall, hset, setJson } from "./kv";
 export const CLASS_TTL_MS = 48 * 3600_000;
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
 
-export type Mission = "claim" | "backup" | "send";
-export const MISSIONS: Mission[] = ["claim", "backup", "send"];
+export type Mission = "claim" | "backup" | "send" | "lightning";
+export const MISSIONS: Mission[] = ["claim", "backup", "send", "lightning"];
 
 export type ClassInfo = { name: string; tokenHash: string; createdAt: number };
 export type Learner = { nickname: string; address: string; joinedAt: number; missions: Partial<Record<Mission, number>> };

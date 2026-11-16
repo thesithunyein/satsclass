@@ -1,4 +1,5 @@
 import { getClass, getRoster, isCode, MISSIONS, tokenMatches } from "@/lib/classroom";
+import { lightningConfigured } from "@/lib/lightning";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
   return Response.json({
     name: info.name,
     learners,
-    totals: { joined: learners.length, claim: done("claim"), backup: done("backup"), send: done("send") },
+    totals: { joined: learners.length, claim: done("claim"), backup: done("backup"), send: done("send"), lightning: done("lightning") },
+    lightning: lightningConfigured(),
   });
 }

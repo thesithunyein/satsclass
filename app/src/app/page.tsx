@@ -40,7 +40,7 @@ import {
 
 type View = "loading" | "welcome" | "restore" | "backup" | "pin" | "locked" | "wallet";
 type Toast = { kind: "ok" | "err"; text: string; txid?: string } | null;
-type Sheet = null | "receive" | "send" | "join" | "check" | "tutor";
+type Sheet = null | "receive" | "send" | "join" | "check" | "tutor" | "lightning";
 
 function Words({ m }: { m: string }) {
   return (
@@ -87,6 +87,10 @@ export default function Home() {
   const [view, setView] = useState<View>("loading");
   const [net, setNet] = useState<NetName>("regtest");
   const [explorer, setExplorer] = useState<string | null>(null);
+  const [lnEnabled, setLnEnabled] = useState(false);
+  const [lnBalance, setLnBalance] = useState<number | null>(null);
+  const [lnInvoice, setLnInvoice] = useState<{ paymentRequest: string; amount: number; memo: string } | null>(null);
+  const [lnPaid, setLnPaid] = useState<{ ms: number; feeSat: number; preimage: string } | null>(null);
   const [mnemonic, setMnemonic] = useState<string | null>(null);
   const [address, setAddress] = useState("");
   const [utxos, setUtxos] = useState<Utxo[]>([]);
@@ -137,10 +141,11 @@ export default function Home() {
   }, [toast]);
 
   useEffect(() => {
-    api<{ network: NetName; explorer: string | null }>("/api/config")
+    api<{ network: NetName; explorer: string | null; lightning?: boolean }>("/api/config")
       .then((c) => {
         setNet(c.network);
         setExplorer(c.explorer);
+        setLnEnabled(Boolean(c.lightning));
       })
       .catch(() => setToast({ kind: "err", text: errText(t, "server_unreachable") }))
       .finally(() => setView(hasVault() ? "locked" : "welcome"));
@@ -289,6 +294,60 @@ export default function Home() {
       setThinking(false);
     }
   }
+
+  async function loadLn() {
+    if (!lnEnabled || !address) return;
+    try {
+      const r = await api<{ balance: number }>(`/api/lightning?address=${encodeURIComponent(address)}`);
+      setLnBalance(r.balance);
+    } catch {}
+  }
+
+  async function openLightning() {
+    setFormErr(null);
+    setLnInvoice(null);
+    setLnPaid(null);
+    setSheet("lightning");
+    loadLn();
+  }
+
+  async function orderCafe() {
+    setFormErr(null);
+    setLnPaid(null);
+    setBusy(true);
+    try {
+      setLnInvoice(await api<{ paymentRequest: string; amount: number; memo: string }>("/api/lightning/invoice", { method: "POST" }));
+    } catch (e) {
+      setFormErr(errText(t, codeOf(e)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function payInvoice() {
+    if (!lnInvoice) return;
+    setFormErr(null);
+    setBusy(true);
+    try {
+      const r = await api<{ ms: number; feeSat: number; preimage: string; balance: number }>("/api/lightning/pay", {
+        method: "POST",
+        body: JSON.stringify({ address, paymentRequest: lnInvoice.paymentRequest, ...classBody() }),
+      });
+      setLnPaid(r);
+      setLnBalance(r.balance);
+      setLnInvoice(null);
+      loadMissions();
+    } catch (e) {
+      setFormErr(errText(t, codeOf(e)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (view === "wallet") loadLn();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, lnEnabled, address]);
 
   function leaveClass() {
     setClass(null);
@@ -564,6 +623,15 @@ export default function Home() {
           <span>{t.tutor}</span>
         </button>
 
+        {lnEnabled && (
+          <button className="ln-card" onClick={openLightning}>
+            <span className="ln-bolt" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 2 4 13.5h6.5L9.5 22 20 9.5h-6.6L13.5 2Z" /></svg>
+            </span>
+            <span className="ln-text"><strong>{t.lightning}</strong><small>{t.lnCardSub(lnBalance === null ? "…" : fmt(lnBalance))}</small></span>
+          </button>
+        )}
+
         <div className="actions">
           <button className="action" onClick={() => setSheet("receive")}>
             <span className="action-icon"><IconReceive /></span>
@@ -581,12 +649,13 @@ export default function Home() {
 
         {joined && (
           <div className="missions">
-            <h2 className="list-title">{t.missionsTitle}<span>{[missions.claim, missions.backup, missions.send].filter(Boolean).length}/3</span></h2>
-            {missions.claim && missions.backup && missions.send && <p className="done-banner">{t.missionsDone}</p>}
+            <h2 className="list-title">{t.missionsTitle}<span>{[missions.claim, missions.backup, missions.send, lnEnabled && missions.lightning].filter(Boolean).length}/{lnEnabled ? 4 : 3}</span></h2>
+            {missions.claim && missions.backup && missions.send && (!lnEnabled || missions.lightning) && <p className="done-banner">{t.missionsDone}</p>}
             {([
               ["claim", t.m1, t.m1Hint, () => (total > 0 ? syncClaim() : getSats())],
               ["backup", t.m2, t.m2Hint, openCheck],
               ["send", t.m3, t.m3Hint, openSend],
+              ...(lnEnabled ? ([["lightning", t.m4, t.m4Hint, openLightning]] as const) : []),
             ] as const).map(([key, title, hint, action], i) => (
               <div className={`mission ${missions[key] ? "done" : ""}`} key={key}>
                 <span className="num">{missions[key] ? <IconCheck size={16} /> : i + 1}</span>
@@ -715,6 +784,36 @@ export default function Home() {
           ))}
           <FormError />
           <button className="btn primary" disabled={busy || checkWords.some((w) => !w.trim())} onClick={submitCheck}>{t.check}</button>
+        </SheetFrame>
+      )}
+
+      {sheet === "lightning" && (
+        <SheetFrame title={t.lnTitle} onClose={() => setSheet(null)}>
+          <p className="lead">{t.lnSub}</p>
+          <div className="ln-balance"><span>{t.lnBalance}</span><strong>{lnBalance === null ? "…" : `${fmt(lnBalance)} sats`}</strong></div>
+          {lnPaid ? (
+            <div className="ln-done">
+              <span className="ln-done-icon"><IconCheck size={26} /></span>
+              <strong>{t.lnPaid((lnPaid.ms / 1000).toFixed(1))}</strong>
+              <small>{t.lnFee(fmt(lnPaid.feeSat))}</small>
+              <div className="ln-receipt"><span>{t.lnReceipt}</span><code>{lnPaid.preimage.slice(0, 24)}…</code></div>
+              <button className="btn ghost" onClick={orderCafe} disabled={busy}>{t.lnAgain}</button>
+            </div>
+          ) : lnInvoice ? (
+            <div className="ln-invoice">
+              <div className="ln-shop"><span>☕</span><div><strong>{lnInvoice.memo}</strong><small>{t.lnInvoice}</small></div><b>{fmt(lnInvoice.amount)} sats</b></div>
+              <div className="qr-wrap"><QRCodeSVG value={lnInvoice.paymentRequest.toUpperCase()} size={190} level="L" fgColor="#101735" /></div>
+              <p className="address">{lnInvoice.paymentRequest.slice(0, 28)}…{lnInvoice.paymentRequest.slice(-8)}</p>
+              <FormError />
+              <button className="btn primary" disabled={busy} onClick={payInvoice}>{busy ? t.sending : t.lnPay(fmt(lnInvoice.amount))}</button>
+            </div>
+          ) : (
+            <>
+              {busy && <p className="hint">{t.lnPreparing}</p>}
+              <FormError />
+              <button className="btn primary" disabled={busy} onClick={orderCafe}>{busy ? t.working : t.lnGetInvoice}</button>
+            </>
+          )}
         </SheetFrame>
       )}
 

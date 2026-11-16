@@ -41,7 +41,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Class Lightning node. Used from mission 5 (Day 3 of the plan).
+  # Class Lightning node: holds learners' practice Lightning balances and pays invoices.
   lnd:
     image: lightninglabs/lnd:v0.21.8-beta
     command:
@@ -56,6 +56,7 @@ services:
       - --rpclisten=0.0.0.0:10009
       - --restlisten=0.0.0.0:8080
       - --tlsextradomain=lnd
+      - --listen=0.0.0.0:9735
       - --alias=satsclass-class-node
     volumes:
       - lnd-data:/root/.lnd
@@ -64,8 +65,35 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # The shop's Lightning node. The class node opens a channel to it on first use,
+  # so learners can pay a real Lightning invoice (mission 4).
+  lnd-shop:
+    image: lightninglabs/lnd:v0.21.8-beta
+    command:
+      - --bitcoin.regtest
+      - --bitcoin.node=bitcoind
+      - --bitcoind.rpchost=bitcoind:18443
+      - --bitcoind.rpcuser=${BTC_RPC_USER}
+      - --bitcoind.rpcpass=${BTC_RPC_PASS}
+      - --bitcoind.zmqpubrawblock=tcp://bitcoind:28332
+      - --bitcoind.zmqpubrawtx=tcp://bitcoind:28333
+      - --noseedbackup
+      - --rpclisten=0.0.0.0:10009
+      - --restlisten=0.0.0.0:8080
+      - --listen=0.0.0.0:9735
+      - --tlsextradomain=lnd-shop
+      - --alias=satsclass-shop
+    volumes:
+      - lnd-shop-data:/root/.lnd
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+    restart: unless-stopped
+
   app:
     build: ./app
+    # Runs as root locally so it can read the LND macaroons (owned by root, mode 600) from the shared volumes.
+    user: "0:0"
     environment:
       CHAIN_BACKEND: core
       BTC_NETWORK: regtest
@@ -74,12 +102,27 @@ services:
       BTC_RPC_PASS: ${BTC_RPC_PASS}
       FAUCET_WALLET: faucet
       FAUCET_AMOUNT_BTC: ${FAUCET_AMOUNT_BTC:-0.001}
+      LND_REST_URL: https://lnd:8080
+      LND_TLS_CERT_PATH: /lnd/tls.cert
+      LND_MACAROON_PATH: /lnd/data/chain/bitcoin/regtest/admin.macaroon
+      SHOP_LND_REST_URL: https://lnd-shop:8080
+      SHOP_LND_TLS_CERT_PATH: /lnd-shop/tls.cert
+      SHOP_LND_MACAROON_PATH: /lnd-shop/data/chain/bitcoin/regtest/admin.macaroon
+      SHOP_LND_P2P_HOST: lnd-shop:9735
+    volumes:
+      - lnd-data:/lnd:ro
+      - lnd-shop-data:/lnd-shop:ro
     ports:
       - "3000:3000"
     depends_on:
       bitcoind:
         condition: service_healthy
+      lnd:
+        condition: service_started
+      lnd-shop:
+        condition: service_started
 
 volumes:
   bitcoind-data:
   lnd-data:
+  lnd-shop-data:

@@ -42,6 +42,7 @@ In classrooms it's worse: a teacher can't ask 30 students to risk real sats, so 
 | **Built for real classrooms** | Mobile-first, works on slow networks, plain words, English and French. |
 | **Classroom mode** | A teacher opens `/teach`, students scan one QR code and pick a nickname. Three missions (get sats, back up, send to a classmate) show up live on the teacher's board. |
 | **Ask Sats, the AI tutor** | Answers beginner questions in English or French using the learner's own practice transactions (amounts, fees, confirmations). Pasted recovery phrases are blocked before they reach the model. |
+| **Real Lightning** | In Docker mode a class LND node opens a channel to a shop LND node on first use. Learners buy a practice café Touba for 1,000 sats and get the payment preimage as their receipt. Only the shop's invoices can be paid, so the class node can't be drained. |
 | **One-command setup** | `docker compose up` starts Bitcoin Core, LND, a block miner and the app. |
 
 ## How it works
@@ -153,7 +154,8 @@ Open <http://localhost:3000>, or `http://<your-computer-ip>:3000` from phones on
 |---|---|
 | `bitcoind` | Bitcoin Core 29 on regtest, a private chain for the class |
 | `seed` | Funds the faucet wallet, then mines a block every 10 seconds |
-| `lnd` | LND class node, for Lightning lessons |
+| `lnd` | Class Lightning node: practice Lightning balances, pays invoices |
+| `lnd-shop` | Shop Lightning node: issues the café Touba invoices |
 | `app` | The web app on port 3000 |
 
 ### Option B: hosted on Vercel (signet)
@@ -220,7 +222,7 @@ Practice networks only. The full threat model, known limits and how to report a 
 - [x] Teacher sessions: join a class by QR code
 - [x] Guided missions with a seed backup check
 - [x] Live class progress board for teachers
-- [ ] Lightning mission (pay an invoice)
+- [x] Lightning mission: pay a real invoice over a channel (Docker mode)
 - [x] Plain-language AI tutor that explains your own transactions
 - [ ] More languages, reviewed by native speakers
 

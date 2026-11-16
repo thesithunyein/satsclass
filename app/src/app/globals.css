@@ -270,3 +270,31 @@ a { color: inherit; }
 .ask-row input { flex: 1; min-height: 52px; padding: 0 18px; border: 1.5px solid #d3d8e4; border-radius: 999px; background: var(--surface); font-size: 16px; }
 .ask-row input:focus { outline: none; border-color: var(--ink-2); box-shadow: 0 0 0 4px rgba(30, 42, 90, 0.08); }
 .ask-btn { display: grid; place-items: center; width: 52px; height: 52px; border: 0; border-radius: 999px; background: var(--ember); color: #fff; }
+
+/* ---------- lightning ---------- */
+.ln-card { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 10px; padding: 12px 16px; border: 1.5px solid var(--line); background: var(--surface); border-radius: var(--r-md); text-align: left; }
+.ln-card:hover { border-color: #c9cfdc; }
+.ln-bolt { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; background: #fff3d6; color: #d98a00; flex: none; }
+.ln-text { display: grid; }
+.ln-text small { color: var(--slate); font-size: 13.5px; }
+.ln-balance { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding: 14px 16px; border-radius: var(--r-md); background: #f6f7fb; border: 1.5px solid var(--line); }
+.ln-balance span { color: var(--slate); font-weight: 500; }
+.ln-balance strong { font-family: var(--font-display), sans-serif; font-size: 20px; }
+.ln-shop { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.ln-shop span { font-size: 28px; }
+.ln-shop div { flex: 1; display: grid; }
+.ln-shop small { color: var(--slate); }
+.ln-shop b { font-family: var(--font-display), sans-serif; font-size: 18px; }
+.ln-done { display: grid; justify-items: center; gap: 6px; margin-top: 18px; text-align: center; }
+.ln-done-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 999px; background: var(--ok); color: #fff; animation: rise 0.25s ease; }
+.ln-done strong { font-family: var(--font-display), sans-serif; font-size: 24px; }
+.ln-done small { color: var(--slate); }
+.ln-receipt { display: grid; gap: 2px; margin-top: 8px; padding: 10px 14px; border-radius: 12px; background: #f6f7fb; width: 100%; }
+.ln-receipt span { font-size: 12.5px; color: var(--slate); font-weight: 600; }
+.ln-receipt code { font-size: 13px; word-break: break-all; }
+.stats.four { grid-template-columns: repeat(5, 1fr); }
+.roster.ln .roster-head, .roster.ln .roster-row { grid-template-columns: 1fr repeat(4, 70px); }
+@media (max-width: 480px) {
+  .stats.four { grid-template-columns: repeat(3, 1fr); }
+  .roster.ln .roster-head, .roster.ln .roster-row { grid-template-columns: 1fr repeat(4, 48px); }
+}

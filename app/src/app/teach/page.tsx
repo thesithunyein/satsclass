@@ -13,7 +13,8 @@ import { getTeacherClass, setTeacherClass, type Missions, type TeacherClass } fr
 type Board = {
   name: string;
   learners: { nickname: string; joinedAt: number; missions: Missions }[];
-  totals: { joined: number; claim: number; backup: number; send: number };
+  totals: { joined: number; claim: number; backup: number; send: number; lightning?: number };
+  lightning?: boolean;
 };
 
 const Tick = ({ on }: { on?: number }) =>
@@ -80,7 +81,8 @@ export default function Teach() {
 
   const joinUrl = cls ? `${origin}/join/${cls.code}` : "";
   const total = board?.totals.joined ?? 0;
-  const allDone = board?.learners.filter((l) => l.missions.claim && l.missions.backup && l.missions.send).length ?? 0;
+  const ln = Boolean(board?.lightning);
+  const allDone = board?.learners.filter((l) => l.missions.claim && l.missions.backup && l.missions.send && (!ln || l.missions.lightning)).length ?? 0;
 
   return (
     <div className="app teach">
@@ -115,19 +117,21 @@ export default function Teach() {
               </div>
             </div>
 
-            <div className="stats">
+            <div className={`stats ${ln ? "four" : ""}`}>
               <div><strong>{total}</strong><span>{t.students}</span></div>
               <div><strong>{board?.totals.claim ?? 0}</strong><span>{t.colGotSats}</span></div>
               <div><strong>{board?.totals.backup ?? 0}</strong><span>{t.colBackedUp}</span></div>
               <div><strong>{board?.totals.send ?? 0}</strong><span>{t.colSent}</span></div>
+              {ln && <div><strong>{board?.totals.lightning ?? 0}</strong><span>{t.colLightning}</span></div>}
             </div>
 
-            <div className="list roster">
+            <div className={`list roster ${ln ? "ln" : ""}`}>
               <div className="roster-head">
                 <span>{t.students}</span>
                 <span>{t.colGotSats}</span>
                 <span>{t.colBackedUp}</span>
                 <span>{t.colSent}</span>
+                {ln && <span>{t.colLightning}</span>}
               </div>
               {board && board.learners.length === 0 && <p className="empty">{t.noStudents}</p>}
               {board?.learners.map((l, i) => (
@@ -136,6 +140,7 @@ export default function Teach() {
                   <Tick on={l.missions.claim} />
                   <Tick on={l.missions.backup} />
                   <Tick on={l.missions.send} />
+                  {ln && <Tick on={l.missions.lightning} />}
                 </div>
               ))}
             </div>

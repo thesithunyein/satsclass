@@ -1,7 +1,7 @@
 // Browser-side class state. Only a class code, its name, a random learner id and a nickname: no personal data.
 export type JoinedClass = { code: string; name: string; joined?: boolean };
 export type TeacherClass = { code: string; name: string; token: string };
-export type Missions = Partial<Record<"claim" | "backup" | "send", number>>;
+export type Missions = Partial<Record<"claim" | "backup" | "send" | "lightning", number>>;
 
 const CLASS_KEY = "satsclass.class";
 const LEARNER_KEY = "satsclass.learner";
