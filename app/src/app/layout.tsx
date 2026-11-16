@@ -7,7 +7,7 @@ const body = Inter({ subsets: ["latin"], variable: "--font-body", display: "swap
 
 export const metadata: Metadata = {
   title: "SatsClass: your first bitcoin, the safe way",
-  description: "A real bitcoin wallet on your phone, with practice money. Learn by doing.",
+  description: "A real bitcoin wallet on your device, with practice money. Learn by doing.",
   icons: { icon: "/icon.svg" },
 };
 
