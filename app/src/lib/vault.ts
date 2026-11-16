@@ -39,14 +39,14 @@ export async function saveVault(mnemonic: string, pin: string): Promise<void> {
 /** Returns the mnemonic, or throws if the PIN is wrong. */
 export async function openVault(pin: string): Promise<string> {
   const raw = localStorage.getItem(KEY);
-  if (!raw) throw new Error("Aucun portefeuille sur cet appareil");
+  if (!raw) throw new Error("no_wallet");
   const data = JSON.parse(raw) as Stored;
   const key = await deriveKey(pin, unb64(data.salt));
   try {
     const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(data.iv) as BufferSource }, key, unb64(data.ct) as BufferSource);
     return new TextDecoder().decode(pt);
   } catch {
-    throw new Error("Code PIN incorrect");
+    throw new Error("wrong_pin");
   }
 }
 

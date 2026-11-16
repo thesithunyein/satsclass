@@ -42,21 +42,21 @@ export async function POST(req: Request) {
   try {
     ({ address } = await req.json());
   } catch {
-    return Response.json({ error: "Requête invalide" }, { status: 400 });
+    return Response.json({ error: "invalid_request" }, { status: 400 });
   }
-  if (!isValidAddress(address)) return Response.json({ error: "Adresse invalide" }, { status: 400 });
+  if (!isValidAddress(address)) return Response.json({ error: "invalid_address" }, { status: 400 });
   if (!(AMOUNT_BTC > 0 && AMOUNT_BTC <= 0.01)) {
-    return Response.json({ error: "Faucet mal configuré" }, { status: 500 });
+    return Response.json({ error: "faucet_misconfigured" }, { status: 500 });
   }
 
   const ipKey = `faucet:ip:${clientIp(req)}`;
   const addrKey = `faucet:addr:${address}`;
   if (!(await rateLimit(ipKey, 10, 3600_000))) {
-    return Response.json({ error: "Limite atteinte pour cet appareil, réessayez plus tard" }, { status: 429 });
+    return Response.json({ error: "faucet_ip_limit" }, { status: 429 });
   }
   if (!(await rateLimit(addrKey, 1, 24 * 3600_000))) {
     await releaseRateLimit(ipKey);
-    return Response.json({ error: "Cette adresse a déjà reçu ses sats de test" }, { status: 429 });
+    return Response.json({ error: "faucet_already_claimed" }, { status: 429 });
   }
 
   try {
@@ -67,6 +67,6 @@ export async function POST(req: Request) {
     // Don't burn the learner's one claim if the faucet itself failed.
     await releaseRateLimit(ipKey);
     await releaseRateLimit(addrKey);
-    return Response.json({ error: "Le faucet de la classe est vide ou occupé, réessayez dans un instant" }, { status: 502 });
+    return Response.json({ error: "faucet_unavailable" }, { status: 502 });
   }
 }

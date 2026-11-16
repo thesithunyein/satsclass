@@ -71,8 +71,8 @@ export function buildSend(
   amount: number,
   feeRate = 2,
 ): BuiltTx {
-  if (!Number.isInteger(amount) || amount < DUST) throw new Error(`Montant minimum : ${DUST} sats`);
-  if (!isValidAddress(to, net)) throw new Error("Adresse invalide pour ce réseau");
+  if (!Number.isInteger(amount) || amount < DUST) throw new Error("min_amount");
+  if (!isValidAddress(to, net)) throw new Error("invalid_address");
 
   const { node, address, output } = deriveAccount(mnemonic, net);
   const nw = network(net);
@@ -87,7 +87,7 @@ export function buildSend(
     fee = estimateVsize(picked.length, 2) * feeRate;
     if (total >= amount + fee) break;
   }
-  if (total < amount + fee) throw new Error("Solde insuffisant (frais compris)");
+  if (total < amount + fee) throw new Error("insufficient_funds");
 
   let change = total - amount - fee;
   let outputs = 2;
@@ -107,7 +107,7 @@ export function buildSend(
 
   psbt.signAllInputs(node);
   const ok = psbt.validateSignaturesOfAllInputs((pubkey, msghash, signature) => ecc.verify(msghash, pubkey, signature));
-  if (!ok) throw new Error("Signature invalide");
+  if (!ok) throw new Error("invalid_signature");
   psbt.finalizeAllInputs();
 
   const tx = psbt.extractTransaction();

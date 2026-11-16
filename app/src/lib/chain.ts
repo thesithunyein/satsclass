@@ -11,7 +11,7 @@ const ESPLORA = (process.env.ESPLORA_URL ?? "https://mutinynet.com/api").replace
 export type Utxo = { txid: string; vout: number; value: number; confirmed: boolean };
 
 export class ChainError extends Error {
-  constructor(message: string, public status = 502) {
+  constructor(message: string, public status = 502, public detail?: string) {
     super(message);
   }
 }
@@ -24,7 +24,7 @@ async function esploraFetch(path: string, init?: RequestInit): Promise<Response>
   try {
     return await fetch(`${ESPLORA}${path}`, { ...init, signal: ctrl.signal, cache: "no-store" });
   } catch {
-    throw new ChainError("Explorateur Bitcoin injoignable");
+    throw new ChainError("node_unavailable");
   } finally {
     clearTimeout(t);
   }
@@ -34,7 +34,7 @@ async function esploraFetch(path: string, init?: RequestInit): Promise<Response>
 export async function getUtxos(address: string): Promise<Utxo[]> {
   if (backend === "esplora") {
     const res = await esploraFetch(`/address/${encodeURIComponent(address)}/utxo`);
-    if (!res.ok) throw new ChainError("Explorateur Bitcoin indisponible");
+    if (!res.ok) throw new ChainError("node_unavailable");
     const list = (await res.json()) as { txid: string; vout: number; value: number; status: { confirmed: boolean } }[];
     return list.map((u) => ({ txid: u.txid, vout: u.vout, value: u.value, confirmed: u.status.confirmed }));
   }
@@ -50,10 +50,10 @@ export async function getUtxos(address: string): Promise<Utxo[]> {
         await sleep(300 + attempt * 200);
         continue;
       }
-      throw new ChainError("Nœud Bitcoin indisponible");
+      throw new ChainError("node_unavailable");
     }
   }
-  throw new ChainError("Nœud occupé, réessayez", 503);
+  throw new ChainError("node_busy", 503);
 }
 
 /** Relay a signed transaction. Returns its txid. */
@@ -61,12 +61,12 @@ export async function broadcast(hex: string): Promise<string> {
   if (backend === "esplora") {
     const res = await esploraFetch("/tx", { method: "POST", body: hex, headers: { "Content-Type": "text/plain" } });
     const text = (await res.text()).trim();
-    if (!res.ok) throw new ChainError(`Transaction refusée : ${text.slice(0, 200)}`, 400);
+    if (!res.ok) throw new ChainError("tx_rejected", 400, text.slice(0, 200));
     return text;
   }
   try {
     return await rpc<string>("sendrawtransaction", [hex]);
   } catch (e) {
-    throw new ChainError(`Transaction refusée : ${e instanceof RpcError ? e.message : "nœud indisponible"}`, 400);
+    throw new ChainError("tx_rejected", 400, e instanceof RpcError ? e.message : undefined);
   }
 }

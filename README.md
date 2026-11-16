@@ -1,6 +1,6 @@
 # SatsClass
 
-**A hands-on Bitcoin classroom.** A teacher shows one QR code; every student gets a real self-custodial wallet on their own phone, test sats, guided missions in French, and an AI tutor that explains their own transactions. Built for Dakar Bitcoin Hack 2026.
+**A hands-on Bitcoin classroom.** A teacher shows one QR code; every student gets a real self-custodial wallet on their own phone, test sats, guided missions in English and French, and an AI tutor that explains their own transactions. Built for Dakar Bitcoin Hack 2026.
 
 > Status: Day 1 of 5 (wallet + classroom chain). Test networks only: no real money.
 

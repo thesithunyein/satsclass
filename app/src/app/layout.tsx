@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SatsClass : apprendre Bitcoin en classe",
-  description: "Un vrai portefeuille Bitcoin de test pour chaque élève, des missions guidées et un tuteur IA.",
+  title: "SatsClass: learn Bitcoin in class",
+  description: "A real self-custodial test wallet for every student, guided missions and an AI tutor.",
 };
 
 export const viewport: Viewport = {
@@ -14,7 +14,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="en">
       <body>{children}</body>
     </html>
   );
