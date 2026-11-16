@@ -7,6 +7,7 @@
 **Your first bitcoin, the safe way.**
 A real self-custodial wallet on your phone, with practice money, built for Bitcoin classes and meetups.
 
+[![CI](https://github.com/thesithunyein/satsclass/actions/workflows/ci.yml/badge.svg)](https://github.com/thesithunyein/satsclass/actions/workflows/ci.yml)
 [![Live](https://img.shields.io/badge/live-satsclass.vercel.app-101735?style=flat-square)](https://satsclass.vercel.app)
 [![License: MIT](https://img.shields.io/badge/license-MIT-F7931A?style=flat-square)](LICENSE)
 [![Network](https://img.shields.io/badge/network-signet%20%7C%20regtest-5A6178?style=flat-square)](#networks)
@@ -195,6 +196,16 @@ satsclass/
 ├── scripts/seed.sh           regtest funding + block miner
 └── docker-compose.yml        bitcoind · lnd · seed · app
 ```
+
+## Tests
+
+```bash
+cd app
+npm test          # unit tests: key derivation (BIP84 vector), signing, fees, dust, coin selection, validation, seed guard
+npm run typecheck
+```
+
+Every push runs typecheck, tests, a production build and a `docker compose` check in [GitHub Actions](https://github.com/thesithunyein/satsclass/actions).
 
 ## Security
 

@@ -1,4 +1,4 @@
-import * as bip39 from "bip39";
+import { looksLikeSeed } from "@/lib/seed-guard";
 import { getAddressTxs, type TxSummary } from "@/lib/chain";
 import { rateLimit } from "@/lib/kv";
 import { clientIp, isValidAddress, serverNetName } from "@/lib/server-validate";
@@ -18,20 +18,6 @@ const MODELS = [
   "alibaba/qwen3.5-flash",
 ].filter((m): m is string => Boolean(m));
 let workingModel: string | null = null; // remembered per warm instance
-const WORDS = new Set(bip39.wordlists.english);
-
-/** Looks like someone pasted their recovery phrase: 8+ BIP39 words in a row-ish. Never send that to an AI. */
-function looksLikeSeed(text: string): boolean {
-  const words = text.toLowerCase().match(/[a-z]+/g) ?? [];
-  let run = 0;
-  let best = 0;
-  for (const w of words) {
-    run = WORDS.has(w) ? run + 1 : 0;
-    best = Math.max(best, run);
-  }
-  return best >= 8;
-}
-
 function systemPrompt(lang: "en" | "fr", net: string, txs: TxSummary[], balance: number | null): string {
   const language = lang === "fr" ? "French" : "English";
   const txLines = txs.length
