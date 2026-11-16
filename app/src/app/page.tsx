@@ -57,12 +57,16 @@ function Words({ m }: { m: string }) {
 
 function SheetFrame({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  // Focus the sheet once when it opens (not on every render, which would steal focus from inputs).
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", onKey);
-    ref.current?.focus();
+    const first = ref.current?.querySelector<HTMLElement>("input, textarea");
+    (first ?? ref.current)?.focus();
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} ref={ref} onClick={(e) => e.stopPropagation()}>
