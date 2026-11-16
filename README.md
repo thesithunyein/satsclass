@@ -1,114 +1,218 @@
+<div align="center">
+
+<img src="app/public/icon.svg" width="112" alt="SatsClass mascot: a sat-coin in a graduation cap" />
+
 # SatsClass
 
-**A hands-on Bitcoin classroom.** A teacher shows one QR code; every student gets a real self-custodial wallet on their own phone, test sats, guided missions in English and French, and an AI tutor that explains their own transactions. Built for Dakar Bitcoin Hack 2026.
+**Your first bitcoin, the safe way.**
+A real self-custodial wallet on your phone, with practice money, built for Bitcoin classes and meetups.
 
-> Status: Day 1 of 5 (wallet + classroom chain). Test networks only: no real money.
+[![Live](https://img.shields.io/badge/live-satsclass.vercel.app-101735?style=flat-square)](https://satsclass.vercel.app)
+[![License: MIT](https://img.shields.io/badge/license-MIT-F7931A?style=flat-square)](LICENSE)
+[![Network](https://img.shields.io/badge/network-signet%20%7C%20regtest-5A6178?style=flat-square)](#networks)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](app/tsconfig.json)
+[![bitcoinjs-lib](https://img.shields.io/badge/bitcoinjs--lib-6-F7931A?style=flat-square&logo=bitcoin&logoColor=white)](https://github.com/bitcoinjs/bitcoinjs-lib)
+[![Languages](https://img.shields.io/badge/languages-English%20%7C%20Fran%C3%A7ais-0F7A55?style=flat-square)](app/src/lib/i18n.ts)
 
-## Quick start
+[Live app](https://satsclass.vercel.app) · [How it works](#how-it-works) · [Run it](#run-it) · [Security](SECURITY.md)
 
-Requirements: Docker Desktop (or Docker Engine with Compose v2).
+</div>
+
+---
+
+## Why
+
+Most people meet Bitcoin through a custodial exchange app. They never hold a key, never back up a seed, never see a fee. When they finally try self-custody with real money, one mistake costs them.
+
+In classrooms it's worse: a teacher can't ask 30 students to risk real sats, so the lesson stays on the whiteboard.
+
+**SatsClass lets everyone do the real thing with practice money.** Each learner gets a self-custodial wallet in the browser, receives sats from the class faucet, backs up a recovery phrase, and sends a real transaction on a test network. Nothing to install, no account, no personal data.
+
+## Features
+
+| | |
+|---|---|
+| **Self-custody from minute one** | Keys are generated and used only in the browser. The server never sees a seed or a private key. |
+| **Practice money** | Runs on signet (Mutinynet) or a private regtest chain. Sats have no value, so mistakes are free. |
+| **Class faucet** | One tap gives each learner 10,000 practice sats. One claim per address, rate-limited per device. |
+| **Real transactions** | Native SegWit (BIP84). The browser selects coins, signs, and the server only relays the signed hex. |
+| **Encrypted on the phone** | The recovery phrase is stored with AES-GCM, keyed from a 6-digit PIN through PBKDF2 (210,000 rounds). |
+| **Built for real classrooms** | Mobile-first, works on slow networks, plain words, English and French. |
+| **One-command setup** | `docker compose up` starts Bitcoin Core, LND, a block miner and the app. |
+
+## How it works
+
+### Architecture
+
+```mermaid
+flowchart LR
+  subgraph Phone["Learner's phone (browser)"]
+    UI["SatsClass web app"]
+    W["Wallet core<br/>BIP39 · BIP84 · PSBT signing"]
+    V[("Encrypted vault<br/>AES-GCM + PBKDF2")]
+    UI --> W
+    W <--> V
+  end
+
+  subgraph Server["SatsClass server (Next.js API)"]
+    API["/api/chain · /api/faucet · /api/config"]
+    RL[("Rate limits + faucet lock<br/>Upstash Redis")]
+    FW["Faucet wallet<br/>(server key, practice sats only)"]
+    API <--> RL
+    API --> FW
+  end
+
+  subgraph Chain["Bitcoin test network"]
+    direction TB
+    ESP["Esplora API<br/>(Mutinynet signet)"]
+    CORE["Bitcoin Core<br/>(regtest, Docker)"]
+  end
+
+  UI -- "address, signed tx hex" --> API
+  API -- "UTXOs, broadcast" --> ESP
+  API -. "Docker mode" .-> CORE
+
+  classDef key fill:#FFE7CC,stroke:#F7931A,color:#101735
+  classDef srv fill:#E7EAF6,stroke:#1E2A5A,color:#101735
+  class W,V key
+  class API,RL,FW srv
+```
+
+The trust boundary is the browser. Anything that can move a learner's sats (the seed, the keys, the signature) is created and used there. The server handles public data only: addresses, unspent outputs and already-signed transactions.
+
+### Sending sats
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor L as Learner
+  participant B as Browser wallet
+  participant S as SatsClass API
+  participant N as Test network
+
+  L->>B: Enter address + amount
+  B->>S: GET /api/chain/utxos?address=…
+  S->>N: Look up unspent outputs
+  N-->>S: UTXOs
+  S-->>B: UTXOs, confirmed + pending
+  Note over B: Coin selection, fee estimate,<br/>PSBT built and signed locally
+  B->>S: POST /api/chain/broadcast { signed hex }
+  S->>N: Relay transaction
+  N-->>S: txid
+  S-->>B: txid
+  B-->>L: "Sent 1,000 sats" + explorer link
+```
+
+### Claiming from the class faucet
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant B as Browser wallet
+  participant S as Faucet API
+  participant R as Redis
+  participant N as Test network
+
+  B->>S: POST /api/faucet { address }
+  S->>S: Validate address and network
+  S->>R: INCR device counter, INCR address counter
+  alt already claimed or over limit
+    S-->>B: 429 faucet_already_claimed
+  else allowed
+    S->>R: SET faucet lock NX PX
+    S->>N: Fetch faucet UTXOs (skip recently spent)
+    S->>S: Build and sign with faucet key
+    S->>N: Broadcast
+    S->>R: Record spent outputs, release lock
+    S-->>B: 200 { txid, sats }
+  end
+```
+
+The lock and the spent-output list stop two simultaneous claims from spending the same coins. If the faucet fails, the learner's claim is refunded.
+
+## Run it
+
+### Option A: everything local, one command (regtest)
+
+Requirements: Docker with Compose v2.
 
 ```bash
-cp .env.example .env        # then set BTC_RPC_PASS to a long random string
+git clone https://github.com/thesithunyein/satsclass
+cd satsclass
+cp .env.example .env          # set BTC_RPC_PASS to a long random string
 docker compose up --build
 ```
 
-Open http://localhost:3000 on your computer, or `http://<your-LAN-IP>:3000` on a phone on the same Wi-Fi.
-
-What starts:
+Open <http://localhost:3000>, or `http://<your-computer-ip>:3000` from phones on the same Wi-Fi.
 
 | Service | What it does |
-| --- | --- |
-| `bitcoind` | Bitcoin Core 29 on **regtest** (the private classroom chain) |
-| `seed` | Creates the class faucet wallet, mines 101 blocks to fund it, then mines 1 block every `BLOCK_INTERVAL` seconds |
-| `lnd` | LND v0.21.8 class Lightning node (used from mission 5) |
-| `app` | Next.js web app on port 3000 |
+|---|---|
+| `bitcoind` | Bitcoin Core 29 on regtest, a private chain for the class |
+| `seed` | Funds the faucet wallet, then mines a block every 10 seconds |
+| `lnd` | LND class node, for Lightning lessons |
+| `app` | The web app on port 3000 |
 
-### Run the app outside Docker (faster UI work)
+### Option B: hosted on Vercel (signet)
 
-```bash
-docker compose up bitcoind seed      # chain only
-cd app && npm install
-BTC_RPC_URL=http://127.0.0.1:18443 BTC_RPC_USER=satsclass BTC_RPC_PASS=... npm run dev
-```
+Vercel can't run a Bitcoin node, so the hosted app uses the **Esplora** backend against [Mutinynet](https://mutinynet.com), a public signet with ~30-second blocks.
 
-For this, add `ports: ["18443:18443"]` under `bitcoind` in `docker-compose.yml`.
+1. Import the repo in Vercel and set **Root Directory** to `app`.
+2. Add **Upstash Redis** from the Vercel Marketplace.
+3. Create a faucet wallet (`npm run faucet:new` in `app/`, or create one in the app) and fund it at [faucet.mutinynet.com](https://faucet.mutinynet.com).
+4. Set the environment variables below and deploy.
 
-## Deploy to Vercel (live demo on Mutinynet signet)
+<a id="networks"></a>
 
-Vercel can't run a Bitcoin node, so the hosted demo uses the **Esplora** backend: balances and broadcasts go through the public [Mutinynet](https://mutinynet.com) explorer API (signet, ~30 s blocks), and the faucet is a small server-side wallet.
+### Configuration
 
-1. **Import** `thesithunyein/satsclass` in Vercel and set **Root Directory = `app`**.
-2. **Add Upstash Redis** (Vercel Marketplace → Upstash). It injects `KV_REST_API_URL` / `KV_REST_API_TOKEN`, which the app uses for rate limits and the faucet lock across serverless instances.
-3. **Create the faucet wallet** locally: `cd app && npm install && npm run faucet:new`. Fund the printed `tb1…` address at [faucet.mutinynet.com](https://faucet.mutinynet.com).
-4. **Set env vars** in Vercel:
+| Variable | Docker (regtest) | Vercel (signet) | Notes |
+|---|---|---|---|
+| `CHAIN_BACKEND` | `core` | `esplora` | Own node vs. public explorer API |
+| `BTC_NETWORK` | `regtest` | `signet` | Address format and derivation network |
+| `ESPLORA_URL` | | `https://mutinynet.com/api` | Esplora-compatible API |
+| `FAUCET_AMOUNT_BTC` | `0.001` | `0.0001` | Per claim, capped at 0.01 |
+| `FAUCET_MNEMONIC` | | 12 words | **Secret.** Mark as Sensitive. |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | | from Upstash | Shared rate limits and lock |
+| `BTC_RPC_URL` / `_USER` / `_PASS` | set in Compose | | Bitcoin Core RPC |
+| `EXPLORER_URL` | | optional | Defaults to Mutinynet on Esplora |
 
-| Variable | Value |
-| --- | --- |
-| `CHAIN_BACKEND` | `esplora` |
-| `BTC_NETWORK` | `signet` |
-| `ESPLORA_URL` | `https://mutinynet.com/api` |
-| `FAUCET_AMOUNT_BTC` | `0.0001` (10,000 sats per learner) |
-| `FAUCET_MNEMONIC` | the 12 words from step 3 (mark as **Sensitive**) |
-
-5. **Deploy.** Without Redis the app still works, but rate limits are per instance only.
-
-| | Docker (`core`) | Vercel (`esplora`) |
-| --- | --- | --- |
-| Chain | Private regtest, 10 s blocks | Mutinynet signet, ~30 s blocks |
-| Balance/broadcast | Own Bitcoin Core (`scantxoutset`, `sendrawtransaction`) | Esplora `GET /address/:a/utxo`, `POST /tx` |
-| Faucet | Bitcoin Core wallet `sendtoaddress` | Server hot wallet (env seed), locked + spent-output tracking |
-| Rate limits | Process memory | Upstash Redis |
-| Lightning (Day 3) | LND in Compose | Needs an externally hosted LND |
-
-## Day 1 happy path
-
-1. **Créer mon portefeuille** → write down the 12 words → choose a 6-digit PIN.
-2. **Recevoir mes sats de test** → 100,000 sats arrive after the next block (≈10 s).
-3. **Envoyer** → paste a classmate's `bcrt1…` address, enter an amount, send.
-4. **Verrouiller**, then unlock with the PIN; or restore from the 12 words on another device.
-
-## Architecture
+## Project structure
 
 ```
-Learner's phone (browser)            Teacher's laptop
-  - seed generated + kept here          - session, QR, live board (Day 2-3)
-  - signs transactions locally
-        │  address, signed tx hex            │
-        ▼                                    ▼
-             SatsClass server (Next.js API)
-               - never receives seeds or keys
-               - rate limits + input validation
-        │ scantxoutset / sendrawtransaction    │ faucet (sendtoaddress)
-        ▼                                      ▼
-   Bitcoin Core (regtest / signet)  ◄──  LND class node
+satsclass/
+├── app/                      Next.js app (UI + API)
+│   ├── src/app/              page, layout, styles, API routes
+│   │   └── api/              config · chain/utxos · chain/broadcast · faucet
+│   ├── src/lib/              wallet (keys, PSBT), vault (encryption), chain backends,
+│   │                         kv (Redis/memory), validation, i18n
+│   ├── src/components/       logo, illustration, icon set
+│   └── scripts/              faucet wallet generator
+├── scripts/seed.sh           regtest funding + block miner
+└── docker-compose.yml        bitcoind · lnd · seed · app
 ```
 
-- **Wallet:** BIP39 12 words → BIP84 native SegWit (`m/84'/1'/0'/0/0`), built with `bitcoinjs-lib`, `bip32`, `bip39` and `@bitcoinerlab/secp256k1`, all in the browser.
-- **Seed at rest:** encrypted in `localStorage` with AES-GCM; key derived from the PIN with PBKDF2-SHA256 (210,000 iterations).
-- **Balances:** the server reads confirmed UTXOs for one address with Bitcoin Core's `scantxoutset`, so learners need no server-side wallet.
-- **Sending:** the browser builds and signs the transaction; the server only relays the signed hex with `sendrawtransaction`.
+## Security
 
-## Security notes (full threat model on Day 4)
+Practice networks only. The full threat model, known limits and how to report a vulnerability are in [SECURITY.md](SECURITY.md).
 
-- Keys never leave the device; the server has no endpoint that accepts a seed or private key.
-- All inputs validated server-side (address format + network, tx hex shape and size).
-- Faucet: one claim per address and at most 10 per IP per hour; claim is refunded if the faucet fails.
-- RPC credentials live only in server environment variables.
-- Known limits: a 6-digit PIN is weak against an attacker who copies the browser storage; acceptable for valueless test sats, documented as a constraint. The in-memory rate limiter assumes a single server instance.
+## Roadmap
 
-## Constraints
+- [x] Self-custodial browser wallet (create, restore, receive, send)
+- [x] Class faucet with shared rate limits
+- [x] Regtest Docker stack and hosted signet deployment
+- [x] English and French
+- [ ] Teacher sessions: join a class by QR code
+- [ ] Guided missions with a forced seed-restore check
+- [ ] Live class progress board for teachers
+- [ ] Lightning mission (pay an invoice)
+- [ ] Plain-language AI tutor that explains your own transactions
+- [ ] More languages, reviewed by native speakers
 
-- Regtest/signet only. Balances show **confirmed** funds only (a block every ~10 s on the class chain).
-- One receive address per wallet (simplicity for beginners).
+## Contributing
 
-## Roadmap (this hackathon)
-
-- **Day 2:** teacher sessions + QR join, mission 1 (claim), mission 2 (forced seed-restore check), mission 3 (send to a classmate).
-- **Day 3:** mission 4 (explorer + confirmations), mission 5 (Lightning invoice), teacher live board, AI tutor in French.
-- **Day 4:** UX pass for low-end phones and slow 3G, `THREAT_MODEL.md`, live signet deployment.
-- **Day 5:** demo video and submission.
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF_CONDUCT.md) first.
 
 ## License
 
-MIT
+[MIT](LICENSE) © Sithu Nyein
