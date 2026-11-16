@@ -57,7 +57,7 @@ function estimateVsize(inputs: number, outputs: number): number {
   return Math.ceil(10.5 + 68 * inputs + 31 * outputs);
 }
 
-export type BuiltTx = { hex: string; txid: string; fee: number; vsize: number; change: number };
+export type BuiltTx = { hex: string; txid: string; fee: number; vsize: number; change: number; inputs: Utxo[] };
 
 /**
  * Build and sign a transaction sending `amount` sats to `to`, paying `feeRate` sat/vB.
@@ -111,5 +111,5 @@ export function buildSend(
   psbt.finalizeAllInputs();
 
   const tx = psbt.extractTransaction();
-  return { hex: tx.toHex(), txid: tx.getId(), fee, vsize: tx.virtualSize(), change };
+  return { hex: tx.toHex(), txid: tx.getId(), fee, vsize: tx.virtualSize(), change, inputs: picked };
 }

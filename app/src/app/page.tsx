@@ -33,6 +33,7 @@ export default function Home() {
   const [address, setAddress] = useState("");
   const [utxos, setUtxos] = useState<Utxo[]>([]);
   const [balance, setBalance] = useState<number | null>(null);
+  const [pending, setPending] = useState(0);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<Msg>(null);
 
@@ -54,9 +55,10 @@ export default function Home() {
   const refresh = useCallback(async () => {
     if (!address) return;
     try {
-      const r = await api<{ utxos: Utxo[]; balance: number }>(`/api/chain/utxos?address=${encodeURIComponent(address)}`);
+      const r = await api<{ utxos: Utxo[]; balance: number; pending: number }>(`/api/chain/utxos?address=${encodeURIComponent(address)}`);
       setUtxos(r.utxos);
       setBalance(r.balance);
+      setPending(r.pending ?? 0);
     } catch (e) {
       setMsg({ kind: "err", text: (e as Error).message });
     }
@@ -261,6 +263,7 @@ export default function Home() {
       <div className="card">
         <p className="muted">Solde confirmé</p>
         <div className="balance">{balance === null ? "…" : `${fmt(balance)} sats`}</div>
+        {pending > 0 && <p className="muted">+ {fmt(pending)} sats en attente de confirmation</p>}
         <button className="secondary" onClick={refresh}>Actualiser</button>
         <button disabled={busy} onClick={claimFaucet}>Recevoir mes sats de test</button>
       </div>

@@ -28,26 +28,6 @@ export function isValidTxHex(hex: unknown): hex is string {
   return typeof hex === "string" && hex.length >= 120 && hex.length <= 200_000 && hex.length % 2 === 0 && /^[0-9a-f]+$/i.test(hex);
 }
 
-/** Tiny in-memory fixed-window rate limiter. Fine for a single-instance classroom server. */
-const buckets = new Map<string, { count: number; resetAt: number }>();
-export function rateLimit(key: string, max: number, windowMs: number): boolean {
-  const now = Date.now();
-  const b = buckets.get(key);
-  if (!b || b.resetAt < now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  if (b.count >= max) return false;
-  b.count += 1;
-  return true;
-}
-
-/** Undo a counted hit, e.g. when the action it guarded failed. */
-export function releaseRateLimit(key: string): void {
-  const b = buckets.get(key);
-  if (b && b.count > 0) b.count -= 1;
-}
-
 export function clientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for");
   return (fwd?.split(",")[0] ?? req.headers.get("x-real-ip") ?? "local").trim();

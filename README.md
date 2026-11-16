@@ -34,6 +34,33 @@ BTC_RPC_URL=http://127.0.0.1:18443 BTC_RPC_USER=satsclass BTC_RPC_PASS=... npm r
 
 For this, add `ports: ["18443:18443"]` under `bitcoind` in `docker-compose.yml`.
 
+## Deploy to Vercel (live demo on Mutinynet signet)
+
+Vercel can't run a Bitcoin node, so the hosted demo uses the **Esplora** backend: balances and broadcasts go through the public [Mutinynet](https://mutinynet.com) explorer API (signet, ~30 s blocks), and the faucet is a small server-side wallet.
+
+1. **Import** `thesithunyein/satsclass` in Vercel and set **Root Directory = `app`**.
+2. **Add Upstash Redis** (Vercel Marketplace → Upstash). It injects `KV_REST_API_URL` / `KV_REST_API_TOKEN`, which the app uses for rate limits and the faucet lock across serverless instances.
+3. **Create the faucet wallet** locally: `cd app && npm install && npm run faucet:new`. Fund the printed `tb1…` address at [faucet.mutinynet.com](https://faucet.mutinynet.com).
+4. **Set env vars** in Vercel:
+
+| Variable | Value |
+| --- | --- |
+| `CHAIN_BACKEND` | `esplora` |
+| `BTC_NETWORK` | `signet` |
+| `ESPLORA_URL` | `https://mutinynet.com/api` |
+| `FAUCET_AMOUNT_BTC` | `0.0001` (10,000 sats per learner) |
+| `FAUCET_MNEMONIC` | the 12 words from step 3 (mark as **Sensitive**) |
+
+5. **Deploy.** Without Redis the app still works, but rate limits are per instance only.
+
+| | Docker (`core`) | Vercel (`esplora`) |
+| --- | --- | --- |
+| Chain | Private regtest, 10 s blocks | Mutinynet signet, ~30 s blocks |
+| Balance/broadcast | Own Bitcoin Core (`scantxoutset`, `sendrawtransaction`) | Esplora `GET /address/:a/utxo`, `POST /tx` |
+| Faucet | Bitcoin Core wallet `sendtoaddress` | Server hot wallet (env seed), locked + spent-output tracking |
+| Rate limits | Process memory | Upstash Redis |
+| Lightning (Day 3) | LND in Compose | Needs an externally hosted LND |
+
 ## Day 1 happy path
 
 1. **Créer mon portefeuille** → write down the 12 words → choose a 6-digit PIN.

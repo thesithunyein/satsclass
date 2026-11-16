@@ -67,6 +67,7 @@ services:
   app:
     build: ./app
     environment:
+      CHAIN_BACKEND: core
       BTC_NETWORK: regtest
       BTC_RPC_URL: http://bitcoind:18443
       BTC_RPC_USER: ${BTC_RPC_USER}
