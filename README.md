@@ -8,6 +8,7 @@
 A real self-custodial wallet on your phone, with practice money, built for Bitcoin classes and meetups.
 
 [![CI](https://github.com/thesithunyein/satsclass/actions/workflows/ci.yml/badge.svg)](https://github.com/thesithunyein/satsclass/actions/workflows/ci.yml)
+[![Integration](https://github.com/thesithunyein/satsclass/actions/workflows/integration.yml/badge.svg)](https://github.com/thesithunyein/satsclass/actions/workflows/integration.yml)
 [![Live](https://img.shields.io/badge/live-satsclass.vercel.app-101735?style=flat-square)](https://satsclass.vercel.app)
 [![License: MIT](https://img.shields.io/badge/license-MIT-F7931A?style=flat-square)](LICENSE)
 [![Network](https://img.shields.io/badge/network-signet%20%7C%20regtest-5A6178?style=flat-square)](#networks)
@@ -208,6 +209,8 @@ npm run typecheck
 ```
 
 Every push runs typecheck, tests, a production build and a `docker compose` check in [GitHub Actions](https://github.com/thesithunyein/satsclass/actions).
+
+An **end-to-end integration test** also boots the full Docker stack (Bitcoin Core, two LND nodes, the app) on every push, claims from the faucet, checks the balance, opens a Lightning channel, pays a real invoice and verifies the preimage receipt, and checks that the same invoice can't be paid twice.
 
 ## Security
 
