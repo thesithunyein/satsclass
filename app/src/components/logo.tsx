@@ -9,9 +9,6 @@ export function LogoMark({ size = 32 }: { size?: number }) {
   {/* body: flat coin with flat lower shade */}
   <ellipse cx="24" cy="27.5" rx="16.5" ry="15.5" fill="#F7931A"/>
   <path d="M8.2 31.5c1.8 6.6 8.2 11.5 15.8 11.5s14-4.9 15.8-11.5c-3.4 4.2-9.2 7-15.8 7s-12.4-2.8-15.8-7Z" fill="#E27A08"/>
-  {/* coin rim */}
-  <ellipse cx="24" cy="27.3" rx="13.4" ry="12.5" fill="none" stroke="#FFB04A" strokeWidth="1.6"/>
-  <path d="M24 13.4v2.2M24 39v2.2" stroke="#FFB04A" strokeWidth="1.6" strokeLinecap="round"/>
   {/* face, set low for a baby-face proportion */}
   <ellipse cx="18.6" cy="29.2" rx="2.3" ry="2.7" fill="#101735"/>
   <ellipse cx="29.4" cy="29.2" rx="2.3" ry="2.7" fill="#101735"/>

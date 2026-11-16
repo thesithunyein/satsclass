@@ -14,7 +14,7 @@ import {
 } from "@/lib/wallet";
 import { deleteVault, hasVault, openVault, saveVault } from "@/lib/vault";
 import { errText, LANGS, useLang, type Dict, type Lang } from "@/lib/i18n";
-import { Logo } from "@/components/logo";
+import { Logo, LogoMark } from "@/components/logo";
 import { HeroArt } from "@/components/hero-art";
 import {
   IconAlert,
@@ -371,7 +371,7 @@ export default function Home() {
   } else if (view === "locked") {
     body = (
       <section className="flow">
-        <div className="flow-icon"><IconLock size={26} /></div>
+        <div className="flow-mascot"><LogoMark size={88} /></div>
         <h1 className="title">{t.welcomeBack}</h1>
         <p className="lead">{t.unlockSub}</p>
         <label className="field">
@@ -399,8 +399,13 @@ export default function Home() {
     body = (
       <section className="wallet">
         <div className="balance-card">
+          <div className="bc-mascot" aria-hidden="true"><LogoMark size={92} /></div>
           <div className="bc-top">
-            <span className="bc-label">{t.balance}</span>
+            <span className="bc-label">{t.balance}
+              <button className="bc-refresh" onClick={refresh} aria-label={t.refresh} title={t.refresh}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" /><path d="M19.5 4.5v4h-4" /></svg>
+            </button>
+            </span>
             <span className="badge">{t.practice}</span>
           </div>
           <div className="bc-amount">
@@ -412,9 +417,7 @@ export default function Home() {
             ) : (
               <span className="bc-addr">{address.slice(0, 10)}…{address.slice(-6)}</span>
             )}
-            <button className="bc-refresh" onClick={refresh} aria-label={t.refresh} title={t.refresh}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" /><path d="M19.5 4.5v4h-4" /></svg>
-            </button>
+
           </div>
         </div>
 
