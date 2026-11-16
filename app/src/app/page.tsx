@@ -494,7 +494,7 @@ export default function Home() {
   } else if (view === "welcome") {
     body = (
       <section className="welcome">
-        <HeroArt />
+        <HeroArt fr={lang === "fr"} />
         <h1 className="display">{t.heroTitle}</h1>
         <p className="lead">{t.heroSub}</p>
         <ul className="points">

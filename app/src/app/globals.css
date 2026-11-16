@@ -309,8 +309,9 @@ a { color: inherit; }
   flex: 1 1 150px; min-height: 120px; max-height: 300px;
   width: 100%; max-width: 100%; aspect-ratio: auto; margin: 0 auto 12px;
 }
-.welcome .hero-mascot { width: auto; height: 76%; aspect-ratio: 1; }
-.welcome .hero-mascot svg { width: 100%; height: 100%; }
+.hero-coin { animation: coin 3.2s ease-in-out infinite; }
+@keyframes coin { 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .hero-coin { animation: none; } }
 .welcome .display { font-size: clamp(28px, 7.6vw, 40px); }
 .welcome .lead { margin-top: 8px; font-size: 16px; }
 .welcome .points { margin-top: 14px; }
