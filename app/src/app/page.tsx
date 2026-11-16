@@ -13,7 +13,11 @@ import {
   type Utxo,
 } from "@/lib/wallet";
 import { deleteVault, hasVault, openVault, saveVault } from "@/lib/vault";
-import { errText, LANGS, useLang, type Dict, type Lang } from "@/lib/i18n";
+import { errText, useLang, type Dict } from "@/lib/i18n";
+import { api } from "@/lib/api";
+import { LangSwitch } from "@/components/lang-switch";
+import Link from "next/link";
+import { getClass, learnerId, setClass, type JoinedClass, type Missions } from "@/lib/class-client";
 import { Logo, LogoMark } from "@/components/logo";
 import { HeroArt } from "@/components/hero-art";
 import {
@@ -36,37 +40,7 @@ import {
 
 type View = "loading" | "welcome" | "restore" | "backup" | "pin" | "locked" | "wallet";
 type Toast = { kind: "ok" | "err"; text: string; txid?: string } | null;
-type Sheet = null | "receive" | "send";
-
-class ApiError extends Error {
-  constructor(code: string) {
-    super(code);
-  }
-}
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
-  } catch {
-    throw new ApiError("network");
-  }
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(body.error ?? "network");
-  return body as T;
-}
-
-function LangSwitch({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
-  return (
-    <div className="lang" role="group" aria-label="Language">
-      {LANGS.map((l) => (
-        <button key={l.code} className={l.code === lang ? "on" : ""} aria-pressed={l.code === lang} onClick={() => setLang(l.code)}>
-          {l.label}
-        </button>
-      ))}
-    </div>
-  );
-}
+type Sheet = null | "receive" | "send" | "join" | "check";
 
 function Words({ m }: { m: string }) {
   return (
@@ -126,6 +100,16 @@ export default function Home() {
   const [sendAmount, setSendAmount] = useState("");
   const [showSeed, setShowSeed] = useState(false);
 
+  // classroom
+  const [cls, setCls] = useState<JoinedClass | null>(null);
+  const [missions, setMissions] = useState<Missions>({});
+  const [nick, setNick] = useState("");
+  const [classmates, setClassmates] = useState<{ nickname: string; address: string }[]>([]);
+  const [checkIdx, setCheckIdx] = useState<number[]>([]);
+  const [checkWords, setCheckWords] = useState<string[]>(["", "", ""]);
+  const joined = Boolean(cls?.joined);
+  const classBody = () => (joined && cls ? { classCode: cls.code, learnerId: learnerId() } : {});
+
   const fmt = (sats: number) => sats.toLocaleString(lang === "fr" ? "fr-FR" : "en-US");
   const total = (confirmed ?? 0) + pending;
   const codeOf = (e: unknown) => (e instanceof Error ? e.message : "network");
@@ -146,6 +130,7 @@ export default function Home() {
       })
       .catch(() => setToast({ kind: "err", text: errText(t, "server_unreachable") }))
       .finally(() => setView(hasVault() ? "locked" : "welcome"));
+    setCls(getClass());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -161,6 +146,103 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address]);
+
+  const loadMissions = useCallback(async () => {
+    if (!cls?.joined) return;
+    try {
+      const r = await api<{ missions: Missions }>(`/api/class/${cls.code}/progress?learner=${learnerId()}`);
+      setMissions(r.missions);
+    } catch (e) {
+      if (codeOf(e) === "not_joined" || codeOf(e) === "class_not_found") {
+        const next = { ...cls, joined: false };
+        setClass(next);
+        setCls(next);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cls]);
+
+  // Joined a class from a link but no nickname yet: ask once the wallet is open.
+  useEffect(() => {
+    if (view === "wallet" && cls && !cls.joined && address) setSheet("join");
+    if (view === "wallet" && cls?.joined) loadMissions();
+  }, [view, cls, address, loadMissions]);
+
+  async function joinClass() {
+    if (!cls) return;
+    setFormErr(null);
+    const name = nick.trim();
+    if (!name) return setFormErr(t.nickname);
+    setBusy(true);
+    try {
+      const r = await api<{ missions: Missions }>(`/api/class/${cls.code}/join`, {
+        method: "POST",
+        body: JSON.stringify({ learnerId: learnerId(), nickname: name, address }),
+      });
+      const next = { ...cls, joined: true };
+      setClass(next);
+      setCls(next);
+      setMissions(r.missions);
+      setSheet(null);
+    } catch (e) {
+      setFormErr(errText(t, codeOf(e)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openCheck() {
+    if (!mnemonic) return;
+    const n = mnemonic.split(" ").length;
+    const picks = new Set<number>();
+    const rnd = new Uint32Array(8);
+    crypto.getRandomValues(rnd);
+    for (const r of rnd) {
+      picks.add(r % n);
+      if (picks.size === 3) break;
+    }
+    while (picks.size < 3) picks.add(picks.size);
+    setCheckIdx([...picks].sort((a, b) => a - b));
+    setCheckWords(["", "", ""]);
+    setFormErr(null);
+    setSheet("check");
+  }
+
+  async function submitCheck() {
+    if (!mnemonic || !cls) return;
+    const words = mnemonic.split(" ");
+    const ok = checkIdx.every((idx, i) => checkWords[i].trim().toLowerCase() === words[idx]);
+    if (!ok) return setFormErr(t.err.wrong_words);
+    setBusy(true);
+    try {
+      await api(`/api/class/${cls.code}/progress`, { method: "POST", body: JSON.stringify({ learnerId: learnerId(), mission: "backup" }) });
+      setMissions((m) => ({ ...m, backup: Date.now() }));
+      setSheet(null);
+      setToast({ kind: "ok", text: t.checkOk });
+    } catch (e) {
+      setFormErr(errText(t, codeOf(e)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openSend() {
+    setFormErr(null);
+    setSheet("send");
+    if (!joined || !cls) return;
+    try {
+      const r = await api<{ classmates: { nickname: string; address: string }[] }>(`/api/class/${cls.code}/classmates?learner=${learnerId()}`);
+      setClassmates(r.classmates);
+    } catch {
+      setClassmates([]);
+    }
+  }
+
+  function leaveClass() {
+    setClass(null);
+    setCls(null);
+    setMissions({});
+  }
 
   useEffect(() => {
     if (view !== "wallet") return;
@@ -213,9 +295,10 @@ export default function Home() {
   async function getSats() {
     setBusy(true);
     try {
-      const r = await api<{ txid: string; sats: number }>("/api/faucet", { method: "POST", body: JSON.stringify({ address }) });
+      const r = await api<{ txid: string; sats: number }>("/api/faucet", { method: "POST", body: JSON.stringify({ address, ...classBody() }) });
       setToast({ kind: "ok", text: t.faucetOk(fmt(r.sats)), txid: r.txid });
       setTimeout(refresh, 2500);
+      loadMissions();
     } catch (e) {
       fail(e);
     } finally {
@@ -232,12 +315,13 @@ export default function Home() {
     setBusy(true);
     try {
       const tx = buildSend(mnemonic, net, utxos, sendTo, amount);
-      const r = await api<{ txid: string }>("/api/chain/broadcast", { method: "POST", body: JSON.stringify({ hex: tx.hex }) });
+      const r = await api<{ txid: string }>("/api/chain/broadcast", { method: "POST", body: JSON.stringify({ hex: tx.hex, ...classBody() }) });
       setToast({ kind: "ok", text: t.sentOk(fmt(amount)), txid: r.txid });
       setSendTo("");
       setSendAmount("");
       setSheet(null);
       setTimeout(refresh, 1500);
+      loadMissions();
     } catch (e) {
       setFormErr(errText(t, codeOf(e)));
     } finally {
@@ -311,6 +395,7 @@ export default function Home() {
           <button className="btn primary" onClick={() => { setMnemonic(newMnemonic()); go("backup"); }}>{t.createWallet}</button>
           <button className="btn ghost" onClick={() => go("restore")}>{t.restoreWallet}</button>
         </div>
+        <Link className="teach-link" href="/teach">{t.teachLink}</Link>
       </section>
     );
   } else if (view === "restore") {
@@ -398,6 +483,7 @@ export default function Home() {
   } else {
     body = (
       <section className="wallet">
+        {joined && cls && <div className="class-chip">{t.inClass(cls.name)}</div>}
         <div className="balance-card">
           <div className="bc-mascot" aria-hidden="true"><LogoMark size={92} /></div>
           <div className="bc-top">
@@ -426,7 +512,7 @@ export default function Home() {
             <span className="action-icon"><IconReceive /></span>
             {t.receive}
           </button>
-          <button className="action" onClick={() => { setFormErr(null); setSheet("send"); }}>
+          <button className="action" onClick={openSend}>
             <span className="action-icon"><IconSend /></span>
             {t.send}
           </button>
@@ -436,6 +522,24 @@ export default function Home() {
           </button>
         </div>
 
+        {joined && (
+          <div className="missions">
+            <h2 className="list-title">{t.missionsTitle}<span>{[missions.claim, missions.backup, missions.send].filter(Boolean).length}/3</span></h2>
+            {missions.claim && missions.backup && missions.send && <p className="done-banner">{t.missionsDone}</p>}
+            {([
+              ["claim", t.m1, t.m1Hint, getSats],
+              ["backup", t.m2, t.m2Hint, openCheck],
+              ["send", t.m3, t.m3Hint, openSend],
+            ] as const).map(([key, title, hint, action], i) => (
+              <div className={`mission ${missions[key] ? "done" : ""}`} key={key}>
+                <span className="num">{missions[key] ? <IconCheck size={16} /> : i + 1}</span>
+                <span className="body"><strong>{title}</strong>{!missions[key] && <small>{hint}</small>}</span>
+                {!missions[key] && <button className="go" onClick={action} disabled={busy}>{t.start}</button>}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="list">
           <h2 className="list-title">{t.security}</h2>
           <button className="row" onClick={() => setShowSeed((s) => !s)} aria-expanded={showSeed}>
@@ -444,6 +548,13 @@ export default function Home() {
             <IconChevron size={18} className={showSeed ? "rot" : ""} />
           </button>
           {showSeed && mnemonic && <div className="row-panel"><Words m={mnemonic} /></div>}
+          {joined && (
+            <button className="row" onClick={leaveClass}>
+              <span className="row-icon"><IconClose size={20} /></span>
+              <span className="row-text">{t.leaveClass}</span>
+              <IconChevron size={18} />
+            </button>
+          )}
           <button
             className="row"
             onClick={() => {
@@ -482,6 +593,22 @@ export default function Home() {
 
       {sheet === "send" && (
         <SheetFrame title={t.sendTitle} onClose={() => setSheet(null)}>
+          {joined && (
+            <>
+              <p className="peers-label">{t.classmates}</p>
+              {classmates.length === 0 ? (
+                <p className="hint">{t.noClassmates}</p>
+              ) : (
+                <div className="peers">
+                  {classmates.map((c) => (
+                    <button key={c.address} className={`peer ${sendTo === c.address ? "on" : ""}`} onClick={() => setSendTo(c.address)}>
+                      {c.nickname}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
           <label className="field">
             <span>{t.to}</span>
             <input autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder={t.toPlaceholder} value={sendTo} onChange={(e) => setSendTo(e.target.value.trim())} />
@@ -499,6 +626,38 @@ export default function Home() {
             <IconSend size={19} />
             {busy ? t.sending : t.sendNow}
           </button>
+        </SheetFrame>
+      )}
+
+      {sheet === "join" && cls && (
+        <SheetFrame title={t.joinTitle(cls.name)} onClose={() => setSheet(null)}>
+          <p className="lead">{t.joinSub}</p>
+          <label className="field">
+            <span>{t.nickname}</span>
+            <input maxLength={24} autoComplete="nickname" placeholder={t.nicknamePlaceholder} value={nick} onChange={(e) => setNick(e.target.value)} onKeyDown={(e) => e.key === "Enter" && joinClass()} />
+          </label>
+          <FormError />
+          <button className="btn primary" disabled={busy || !nick.trim()} onClick={joinClass}>{busy ? t.joining : t.joinClass}</button>
+        </SheetFrame>
+      )}
+
+      {sheet === "check" && (
+        <SheetFrame title={t.checkTitle} onClose={() => setSheet(null)}>
+          <p className="lead">{t.checkSub}</p>
+          {checkIdx.map((idx, i) => (
+            <label className="field" key={idx}>
+              <span>{t.word(idx + 1)}</span>
+              <input
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={checkWords[i]}
+                onChange={(e) => setCheckWords((w) => w.map((v, j) => (j === i ? e.target.value : v)))}
+              />
+            </label>
+          ))}
+          <FormError />
+          <button className="btn primary" disabled={busy || checkWords.some((w) => !w.trim())} onClick={submitCheck}>{t.check}</button>
         </SheetFrame>
       )}
 

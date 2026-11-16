@@ -201,3 +201,48 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition: none !important; }
 }
+
+/* ---------- teacher board ---------- */
+.app.teach { max-width: 760px; }
+.board { padding-top: 4px; }
+.join-card { display: grid; gap: 20px; align-items: center; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r-lg); padding: 22px; }
+@media (min-width: 640px) { .join-card { grid-template-columns: auto 1fr; } }
+.join-qr { justify-self: center; background: #fff; padding: 14px; border-radius: 22px; border: 1.5px solid var(--line); }
+.join-meta .title { font-size: 30px; }
+.code-pill { display: inline-block; margin-top: 16px; padding: 10px 18px; border-radius: 999px; background: var(--ink); color: #fff; font-family: var(--font-display), sans-serif; font-weight: 700; font-size: 28px; letter-spacing: 0.18em; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px; }
+.stats div { background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r-md); padding: 14px 12px; display: grid; gap: 2px; }
+.stats strong { font-family: var(--font-display), sans-serif; font-size: 28px; line-height: 1; }
+.stats span { font-size: 13px; color: var(--slate); font-weight: 500; }
+.roster { margin-top: 16px; }
+.roster-head, .roster-row { display: grid; grid-template-columns: 1fr repeat(3, 76px); align-items: center; gap: 6px; padding: 12px 16px; }
+.roster-head { font-size: 13px; font-weight: 600; color: var(--slate); border-bottom: 1.5px solid var(--line); }
+.roster-head span:not(:first-child), .roster-row .tick { justify-self: center; }
+.roster-row + .roster-row { border-top: 1px solid var(--line); }
+.roster-row .who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tick { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; border: 1.5px dashed #c9cfdc; }
+.tick.on { border: 0; background: var(--ok); color: #fff; }
+.empty { padding: 18px 16px; margin: 0; color: var(--slate); }
+.hint.center { text-align: center; }
+@media (max-width: 480px) { .roster-head, .roster-row { grid-template-columns: 1fr repeat(3, 56px); } .roster-head { font-size: 11.5px; } .stats strong { font-size: 22px; } }
+
+/* ---------- missions (learner) ---------- */
+.class-chip { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 6px 12px; border-radius: 999px; background: var(--navy-soft); font-weight: 600; font-size: 14px; }
+.missions { margin-top: 18px; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
+.missions .list-title { display: flex; justify-content: space-between; align-items: center; }
+.mission { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.mission + .mission { border-top: 1px solid var(--line); }
+.mission .num { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 999px; background: var(--navy-soft); font-weight: 700; font-size: 14px; }
+.mission.done .num { background: var(--ok); color: #fff; }
+.mission .body { flex: 1; display: grid; }
+.mission .body strong { font-weight: 600; }
+.mission .body small { color: var(--slate); font-size: 13.5px; }
+.mission.done .body strong { color: var(--slate); }
+.mission .go { border: 0; background: var(--ink); color: #fff; font-weight: 600; font-size: 14px; padding: 8px 14px; border-radius: 999px; }
+.done-banner { margin: 0; padding: 12px 16px; background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+.peers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.peer { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 14.5px; }
+.peer.on { border-color: var(--ink); background: var(--ink); color: #fff; }
+.peers-label { font-size: 14px; font-weight: 600; color: var(--slate); margin-top: 18px; }
+.teach-link { display: block; text-align: center; margin-top: 18px; font-weight: 600; color: var(--slate); text-decoration: none; }
+.teach-link:hover { color: var(--ink); }

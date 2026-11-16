@@ -2,6 +2,7 @@ import { backend, broadcast, getUtxos } from "@/lib/chain";
 import { acquireLock, getJson, rateLimit, releaseRateLimit, setJson } from "@/lib/kv";
 import { rpc } from "@/lib/rpc";
 import { clientIp, isValidAddress, serverNetName } from "@/lib/server-validate";
+import { completeMission, getLearner, isCode, isLearnerId } from "@/lib/classroom";
 import { buildSend, deriveAccount } from "@/lib/wallet";
 
 export const dynamic = "force-dynamic";
@@ -39,8 +40,10 @@ async function sendFromHotWallet(to: string): Promise<string> {
 // Day 2 replaces this with session-scoped claims (one per learner per class session).
 export async function POST(req: Request) {
   let address: unknown;
+  let classCode: unknown;
+  let learnerId: unknown;
   try {
-    ({ address } = await req.json());
+    ({ address, classCode, learnerId } = await req.json());
   } catch {
     return Response.json({ error: "invalid_request" }, { status: 400 });
   }
@@ -52,6 +55,14 @@ export async function POST(req: Request) {
   // The faucet never pays itself (avoids a wasted claim and a confusing error).
   if (backend === "esplora" && FAUCET_MNEMONIC && deriveAccount(FAUCET_MNEMONIC, serverNetName()).address === address) {
     return Response.json({ error: "faucet_self" }, { status: 400 });
+  }
+
+  // In a class: one claim per learner, and only to the address they joined with.
+  const cls = isCode(classCode) && isLearnerId(learnerId) ? { code: classCode, learner: learnerId } : null;
+  if (cls) {
+    const learner = await getLearner(cls.code, cls.learner);
+    if (!learner || learner.address !== address) return Response.json({ error: "not_joined" }, { status: 400 });
+    if (learner.missions.claim) return Response.json({ error: "faucet_already_claimed" }, { status: 429 });
   }
 
   const ipKey = `faucet:ip:${clientIp(req)}`;
@@ -66,6 +77,7 @@ export async function POST(req: Request) {
 
   try {
     const txid = backend === "esplora" ? await sendFromHotWallet(address) : await rpc<string>("sendtoaddress", [address, AMOUNT_BTC], CORE_WALLET);
+    if (cls) await completeMission(cls.code, cls.learner, "claim");
     return Response.json({ txid, sats: SATS });
   } catch (e) {
     console.error("faucet error:", e instanceof Error ? e.message : "unknown"); // no address/PII logged

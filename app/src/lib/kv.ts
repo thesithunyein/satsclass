@@ -89,6 +89,50 @@ export async function acquireLock(name: string, ttlMs = 15_000, waitMs = 8_000):
   return null;
 }
 
+// ---- hashes (class rosters) ----
+const memHashes = new Map<string, { fields: Map<string, string>; expiresAt: number }>();
+function memHash(key: string, create: boolean) {
+  let h = memHashes.get(key);
+  if (h && h.expiresAt < Date.now()) {
+    memHashes.delete(key);
+    h = undefined;
+  }
+  if (!h && create) {
+    h = { fields: new Map(), expiresAt: Date.now() + 48 * 3600_000 };
+    memHashes.set(key, h);
+  }
+  return h;
+}
+
+export async function hset(key: string, field: string, value: unknown, ttlMs: number): Promise<void> {
+  const raw = JSON.stringify(value);
+  if (kvEnabled) {
+    await redis(["HSET", key, field, raw]);
+    await redis(["PEXPIRE", key, ttlMs]);
+    return;
+  }
+  const h = memHash(key, true)!;
+  h.fields.set(field, raw);
+  h.expiresAt = Date.now() + ttlMs;
+}
+
+export async function hget<T>(key: string, field: string): Promise<T | null> {
+  const raw = kvEnabled ? await redis<string | null>(["HGET", key, field]) : (memHash(key, false)?.fields.get(field) ?? null);
+  return raw ? (JSON.parse(raw) as T) : null;
+}
+
+export async function hgetall<T>(key: string): Promise<Record<string, T>> {
+  const out: Record<string, T> = {};
+  if (kvEnabled) {
+    const flat = (await redis<string[] | null>(["HGETALL", key])) ?? [];
+    for (let i = 0; i + 1 < flat.length; i += 2) out[flat[i]] = JSON.parse(flat[i + 1]) as T;
+    return out;
+  }
+  const h = memHash(key, false);
+  if (h) for (const [f, v] of h.fields) out[f] = JSON.parse(v) as T;
+  return out;
+}
+
 /** Small JSON value with a TTL. */
 export async function getJson<T>(key: string): Promise<T | null> {
   const raw = kvEnabled ? await redis<string | null>(["GET", key]) : (memGet(key)?.value ?? null);
