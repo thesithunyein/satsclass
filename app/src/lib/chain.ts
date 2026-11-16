@@ -56,6 +56,49 @@ export async function getUtxos(address: string): Promise<Utxo[]> {
   throw new ChainError("node_busy", 503);
 }
 
+export type TxSummary = {
+  txid: string;
+  direction: "in" | "out" | "self";
+  amount: number; // sats received (in) or sent to others (out)
+  fee: number;
+  vsize: number;
+  feeRate: number; // sat/vB
+  confirmations: number;
+};
+
+/** Recent transactions for one address, summarized from the address's point of view (Esplora only). */
+export async function getAddressTxs(address: string, limit = 5): Promise<TxSummary[]> {
+  if (backend !== "esplora") return [];
+  type ETx = {
+    txid: string;
+    fee: number;
+    weight: number;
+    status: { confirmed: boolean; block_height?: number };
+    vin: { prevout?: { scriptpubkey_address?: string; value: number } }[];
+    vout: { scriptpubkey_address?: string; value: number }[];
+  };
+  const [txRes, tipRes] = await Promise.all([esploraFetch(`/address/${encodeURIComponent(address)}/txs`), esploraFetch("/blocks/tip/height")]);
+  if (!txRes.ok || !tipRes.ok) throw new ChainError("node_unavailable");
+  const txs = ((await txRes.json()) as ETx[]).slice(0, limit);
+  const tip = Number(await tipRes.text());
+  return txs.map((tx) => {
+    const fromMe = tx.vin.reduce((s, i) => s + (i.prevout?.scriptpubkey_address === address ? i.prevout.value : 0), 0);
+    const toMe = tx.vout.reduce((s, o) => s + (o.scriptpubkey_address === address ? o.value : 0), 0);
+    const toOthers = tx.vout.reduce((s, o) => s + (o.scriptpubkey_address !== address ? o.value : 0), 0);
+    const vsize = Math.ceil(tx.weight / 4);
+    const direction: TxSummary["direction"] = fromMe === 0 ? "in" : toOthers === 0 ? "self" : "out";
+    return {
+      txid: tx.txid,
+      direction,
+      amount: direction === "in" ? toMe : toOthers,
+      fee: tx.fee,
+      vsize,
+      feeRate: Math.round((tx.fee / vsize) * 10) / 10,
+      confirmations: tx.status.confirmed && tx.status.block_height ? tip - tx.status.block_height + 1 : 0,
+    };
+  });
+}
+
 /** Relay a signed transaction. Returns its txid. */
 export async function broadcast(hex: string): Promise<string> {
   if (backend === "esplora") {

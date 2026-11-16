@@ -40,7 +40,7 @@ import {
 
 type View = "loading" | "welcome" | "restore" | "backup" | "pin" | "locked" | "wallet";
 type Toast = { kind: "ok" | "err"; text: string; txid?: string } | null;
-type Sheet = null | "receive" | "send" | "join" | "check";
+type Sheet = null | "receive" | "send" | "join" | "check" | "tutor";
 
 function Words({ m }: { m: string }) {
   return (
@@ -112,6 +112,11 @@ export default function Home() {
   const [checkIdx, setCheckIdx] = useState<number[]>([]);
   const [checkWords, setCheckWords] = useState<string[]>(["", "", ""]);
   const joined = Boolean(cls?.joined);
+
+  // tutor
+  const [chat, setChat] = useState<{ role: "user" | "assistant"; content: string; err?: boolean }[]>([]);
+  const [question, setQuestion] = useState("");
+  const [thinking, setThinking] = useState(false);
   const classBody = () => (joined && cls ? { classCode: cls.code, learnerId: learnerId() } : {});
 
   const fmt = (sats: number) => sats.toLocaleString(lang === "fr" ? "fr-FR" : "en-US");
@@ -259,6 +264,26 @@ export default function Home() {
     if (joined && total > 0 && !missions.claim) syncClaim();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joined, total, missions.claim]);
+
+  async function ask(q: string) {
+    const text = q.trim();
+    if (!text || thinking) return;
+    const history = chat.filter((m) => !m.err).map(({ role, content }) => ({ role, content }));
+    setChat((c) => [...c, { role: "user", content: text }]);
+    setQuestion("");
+    setThinking(true);
+    try {
+      const r = await api<{ answer: string }>("/api/tutor", {
+        method: "POST",
+        body: JSON.stringify({ question: text, lang, address, balance: total, history }),
+      });
+      setChat((c) => [...c, { role: "assistant", content: r.answer }]);
+    } catch (e) {
+      setChat((c) => [...c, { role: "assistant", content: errText(t, codeOf(e)), err: true }]);
+    } finally {
+      setThinking(false);
+    }
+  }
 
   function leaveClass() {
     setClass(null);
@@ -529,6 +554,11 @@ export default function Home() {
           </div>
         </div>
 
+        <button className="tutor-fab" onClick={() => setSheet("tutor")} aria-label={t.tutor}>
+          <LogoMark size={40} />
+          <span>{t.tutor}</span>
+        </button>
+
         <div className="actions">
           <button className="action" onClick={() => setSheet("receive")}>
             <span className="action-icon"><IconReceive /></span>
@@ -680,6 +710,46 @@ export default function Home() {
           ))}
           <FormError />
           <button className="btn primary" disabled={busy || checkWords.some((w) => !w.trim())} onClick={submitCheck}>{t.check}</button>
+        </SheetFrame>
+      )}
+
+      {sheet === "tutor" && (
+        <SheetFrame title={t.tutorTitle} onClose={() => setSheet(null)}>
+          <p className="lead">{t.tutorSub}</p>
+          <div className="chat" aria-live="polite">
+            {chat.length === 0 && (
+              <div className="suggest">
+                {[t.tutorQ1, t.tutorQ2, t.tutorQ3, t.tutorQ4].map((q) => (
+                  <button key={q} className="peer" onClick={() => ask(q)}>{q}</button>
+                ))}
+              </div>
+            )}
+            {chat.map((m, i) => (
+              <div key={i} className={`bubble ${m.role} ${m.err ? "err" : ""}`}>
+                {m.role === "assistant" && <span className="bubble-avatar"><LogoMark size={28} /></span>}
+                <p>{m.content}</p>
+              </div>
+            ))}
+            {thinking && (
+              <div className="bubble assistant">
+                <span className="bubble-avatar"><LogoMark size={28} /></span>
+                <p className="typing" aria-label={t.tutorThinking}><i /><i /><i /></p>
+              </div>
+            )}
+          </div>
+          <div className="ask-row">
+            <input
+              placeholder={t.tutorPlaceholder}
+              maxLength={500}
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && ask(question)}
+            />
+            <button className="ask-btn" disabled={thinking || !question.trim()} onClick={() => ask(question)} aria-label={t.tutorAsk}>
+              <IconSend size={20} />
+            </button>
+          </div>
+          <p className="hint">{t.tutorNote}</p>
         </SheetFrame>
       )}
 
