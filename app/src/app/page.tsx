@@ -502,11 +502,11 @@ export default function Home() {
           <li><IconShield /><span>{t.point2}</span></li>
           <li><IconSignal /><span>{t.point3}</span></li>
         </ul>
-        <div className="stack">
+        <div className="stack cta">
           <button className="btn primary" onClick={() => { setMnemonic(newMnemonic()); go("backup"); }}>{t.createWallet}</button>
           <button className="btn ghost" onClick={() => go("restore")}>{t.restoreWallet}</button>
+          <Link className="teach-link" href="/teach">{t.teachLink}</Link>
         </div>
-        <Link className="teach-link" href="/teach">{t.teachLink}</Link>
       </section>
     );
   } else if (view === "restore") {

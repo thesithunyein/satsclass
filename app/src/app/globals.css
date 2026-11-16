@@ -298,3 +298,36 @@ a { color: inherit; }
   .stats.four { grid-template-columns: repeat(3, 1fr); }
   .roster.ln .roster-head, .roster.ln .roster-row { grid-template-columns: 1fr repeat(4, 48px); }
 }
+
+/* ---------- mobile fit (welcome) ----------
+   The welcome screen fills exactly one screen; the action buttons stay pinned
+   above the browser's bottom toolbar (iOS Safari) using safe-area insets. */
+.app { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 72px); }
+.welcome .hero-art { height: min(30dvh, 240px); width: auto; max-width: 100%; margin: 0 auto 12px; }
+.welcome .display { font-size: clamp(28px, 7.6vw, 40px); }
+.welcome .lead { margin-top: 8px; font-size: 16px; }
+.welcome .points { margin-top: 14px; }
+.welcome .points li { padding: 8px 0; gap: 12px; }
+.welcome .points svg { width: 32px; height: 32px; padding: 6px; }
+.welcome .cta {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  gap: 8px;
+  padding: 18px 0 calc(10px + env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, rgba(243, 245, 249, 0), var(--mist) 18px);
+  z-index: 5;
+}
+.welcome .cta .btn { min-height: 52px; }
+.welcome .cta .teach-link { margin-top: 2px; padding: 6px 0; }
+
+/* Short phones (e.g. iPhone SE, small Androids): shrink the illustration further. */
+@media (max-height: 700px) {
+  .welcome .hero-art { height: min(22dvh, 170px); margin-bottom: 6px; }
+  .welcome .lead { display: none; }
+  .bar { height: 60px; }
+}
+
+/* Sheets and toasts also respect the home-indicator area. */
+.toast { bottom: calc(16px + env(safe-area-inset-bottom)); }
