@@ -1,44 +1,40 @@
-// SatsClass mark: a friendly sat-coin wearing a graduation cap.
-// Coin = sats, cap = class. Rounded shapes to match the app's soft UI.
+// SatsClass mascot: a little sat-coin in a graduation cap.
+// Flat shapes, no gloss: friendly at 30px and on a projector.
 export function LogoMark({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="SatsClass">
-      <defs>
-        <radialGradient id="lm-coin" cx="0.35" cy="0.32" r="0.85">
-          <stop offset="0" stopColor="#FFD18C" />
-          <stop offset="0.55" stopColor="#F7931A" />
-          <stop offset="1" stopColor="#D9730A" />
-        </radialGradient>
-        <linearGradient id="lm-cap" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#2A3A7C" />
-          <stop offset="1" stopColor="#101735" />
-        </linearGradient>
-      </defs>
-      {/* coin edge + face */}
-      <circle cx="24" cy="27.5" r="17" fill="#C2650A" />
-      <circle cx="24" cy="26" r="17" fill="url(#lm-coin)" />
-      <circle cx="24" cy="26" r="12.5" fill="none" stroke="#ffffff" strokeOpacity="0.45" strokeWidth="1.6" />
-      {/* happy face */}
-      <circle cx="19.3" cy="26" r="1.9" fill="#101735" />
-      <circle cx="28.7" cy="26" r="1.9" fill="#101735" />
-      <path d="M20.6 30.6c2 1.8 4.8 1.8 6.8 0" fill="none" stroke="#101735" strokeWidth="1.9" strokeLinecap="round" />
-      <circle cx="16.4" cy="29.6" r="1.6" fill="#ffffff" fillOpacity="0.35" />
-      <circle cx="31.6" cy="29.6" r="1.6" fill="#ffffff" fillOpacity="0.35" />
-      {/* graduation cap, slightly tilted */}
-      <g transform="rotate(-10 24 10)">
-        <path d="M15.5 12.2v4.3c0 1.6 3.8 3 8.5 3s8.5-1.4 8.5-3v-4.3" fill="#1A2550" />
-        <path d="M24 3.5 41 10.5 24 17.5 7 10.5Z" fill="url(#lm-cap)" stroke="#101735" strokeWidth="0.8" strokeLinejoin="round" />
-        <path d="M24 10.5 36.5 13v6.2" fill="none" stroke="#FFB547" strokeWidth="1.6" strokeLinecap="round" />
-        <circle cx="36.5" cy="20.4" r="1.9" fill="#FFB547" />
-      </g>
-    </svg>
+  {/* feet */}
+  <ellipse cx="18.5" cy="43.6" rx="3.6" ry="2.2" fill="#101735"/>
+  <ellipse cx="29.5" cy="43.6" rx="3.6" ry="2.2" fill="#101735"/>
+  {/* body: flat coin with flat lower shade */}
+  <ellipse cx="24" cy="27.5" rx="16.5" ry="15.5" fill="#F7931A"/>
+  <path d="M8.2 31.5c1.8 6.6 8.2 11.5 15.8 11.5s14-4.9 15.8-11.5c-3.4 4.2-9.2 7-15.8 7s-12.4-2.8-15.8-7Z" fill="#E27A08"/>
+  {/* coin rim */}
+  <ellipse cx="24" cy="27.3" rx="13.4" ry="12.5" fill="none" stroke="#FFB04A" strokeWidth="1.6"/>
+  <path d="M24 13.4v2.2M24 39v2.2" stroke="#FFB04A" strokeWidth="1.6" strokeLinecap="round"/>
+  {/* face, set low for a baby-face proportion */}
+  <ellipse cx="18.6" cy="29.2" rx="2.3" ry="2.7" fill="#101735"/>
+  <ellipse cx="29.4" cy="29.2" rx="2.3" ry="2.7" fill="#101735"/>
+  <circle cx="19.4" cy="28.2" r="0.85" fill="#fff"/>
+  <circle cx="30.2" cy="28.2" r="0.85" fill="#fff"/>
+  <path d="M22.3 32.9c.9 1 2.5 1 3.4 0" fill="none" stroke="#101735" strokeWidth="1.6" strokeLinecap="round"/>
+  <ellipse cx="14.6" cy="32.6" rx="2.3" ry="1.4" fill="#FF8F6B" opacity="0.75"/>
+  <ellipse cx="33.4" cy="32.6" rx="2.3" ry="1.4" fill="#FF8F6B" opacity="0.75"/>
+  {/* tiny cap, tilted */}
+  <g transform="rotate(-14 26 12)">
+    <path d="M18.5 12.6v3.2c0 1.2 3.4 2.2 7.5 2.2s7.5-1 7.5-2.2v-3.2" fill="#1E2A5A"/>
+    <path d="M26 5.2 38.5 10.6 26 16 13.5 10.6Z" fill="#101735"/>
+    <path d="M26 10.6 35.6 12.4v5.4" fill="none" stroke="#FFC857" strokeWidth="1.5" strokeLinecap="round"/>
+    <circle cx="35.6" cy="18.6" r="1.7" fill="#FFC857"/>
+  </g>
+</svg>
   );
 }
 
 export function Logo() {
   return (
     <span className="logo">
-      <LogoMark size={34} />
+      <LogoMark size={36} />
       <span className="logo-word">SatsClass</span>
     </span>
   );
