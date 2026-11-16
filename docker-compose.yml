@@ -107,7 +107,9 @@ services:
       LND_MACAROON_PATH: /lnd/data/chain/bitcoin/regtest/admin.macaroon
       SHOP_LND_REST_URL: https://lnd-shop:8080
       SHOP_LND_TLS_CERT_PATH: /lnd-shop/tls.cert
-      SHOP_LND_MACAROON_PATH: /lnd-shop/data/chain/bitcoin/regtest/admin.macaroon
+      # Least privilege: read-only for getinfo, invoice-only for creating invoices.
+      SHOP_LND_MACAROON_PATH: /lnd-shop/data/chain/bitcoin/regtest/readonly.macaroon
+      SHOP_LND_INVOICE_MACAROON_PATH: /lnd-shop/data/chain/bitcoin/regtest/invoice.macaroon
       SHOP_LND_P2P_HOST: lnd-shop:9735
     volumes:
       - lnd-data:/lnd:ro

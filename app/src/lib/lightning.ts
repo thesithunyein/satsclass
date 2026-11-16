@@ -7,6 +7,12 @@ import { rpc } from "./rpc";
 //  - the CLASS node holds learners' practice Lightning balances and pays invoices
 //  - the SHOP node issues invoices for the "buy a café Touba" mission
 // Talks to LND over its REST API with TLS pinned to each node's own certificate.
+//
+// Least privilege:
+//  - shop node: a read-only macaroon (getinfo) and an invoice-only macaroon (create invoices).
+//    The app can never move the shop's funds.
+//  - class node: admin macaroon, because paying invoices and opening the channel need it.
+//    Payments are limited to the shop's invoices, capped by each learner's practice balance.
 
 type Node = { url: string; cert: Buffer; macaroon: string };
 
@@ -68,11 +74,20 @@ function lnd<T>(node: Node, method: "GET" | "POST", path: string, body?: unknown
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function nodes(): { cls: Node; shop: Node } {
+function nodes(): { cls: Node; shop: Node; shopInvoices: Node } {
   const cls = loadNode("LND");
   const shop = loadNode("SHOP_LND");
   if (!cls || !shop) throw new LightningError("ln_not_configured");
-  return { cls, shop };
+  const invPath = process.env.SHOP_LND_INVOICE_MACAROON_PATH;
+  let shopInvoices = shop;
+  if (invPath) {
+    try {
+      shopInvoices = { ...shop, macaroon: readFileSync(invPath).toString("hex") };
+    } catch {
+      throw new LightningError("ln_not_configured");
+    }
+  }
+  return { cls, shop, shopInvoices };
 }
 
 type Info = { identity_pubkey: string; synced_to_chain: boolean };
@@ -149,8 +164,8 @@ export type Invoice = { paymentRequest: string; amount: number; memo: string; ex
 
 /** The shop issues a fresh invoice for one practice café Touba. */
 export async function shopInvoice(amount: number, memo: string): Promise<Invoice> {
-  const { shop } = nodes();
-  const r = await lnd<{ payment_request: string }>(shop, "POST", "/v1/invoices", { value: String(amount), memo, expiry: "600" });
+  const { shopInvoices } = nodes();
+  const r = await lnd<{ payment_request: string }>(shopInvoices, "POST", "/v1/invoices", { value: String(amount), memo, expiry: "600" });
   return { paymentRequest: r.payment_request, amount, memo, expiresIn: 600 };
 }
 

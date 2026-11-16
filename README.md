@@ -46,6 +46,39 @@ In classrooms it's worse: a teacher can't ask 30 students to risk real sats, so 
 | **Real Lightning** | In Docker mode a class LND node opens a channel to a shop LND node on first use. Learners buy a practice café Touba for 1,000 sats and get the payment preimage as their receipt. Only the shop's invoices can be paid, so the class node can't be drained. |
 | **One-command setup** | `docker compose up` starts Bitcoin Core, LND, a block miner and the app. |
 
+## Who it's for
+
+**Primary user: a volunteer Bitcoin teacher** running a 1–2 hour session for 20–40 people, often in a school room or meetup with mid-range Android phones and patchy mobile data.
+**Secondary user: each learner**, holding self-custody for the first time.
+
+| | Today, without SatsClass | With SatsClass |
+|---|---|---|
+| Setup | Teacher helps people install a mainnet wallet one by one | Students scan one QR code; a wallet is ready in under a minute |
+| Practice | Nobody wants to risk real money, so most never send a transaction | Everyone gets 10,000 practice sats and sends a real transaction |
+| Backup | Teacher says "write your words down" and hopes | App checks 3 random words before the mission counts |
+| Lightning | Explained on a whiteboard | Everyone pays a real invoice and gets a receipt |
+| Follow-up | Teacher can't see who is stuck | Live board shows every student's progress |
+| Questions | One teacher, 30 questions | "Ask Sats" answers using each student's own transactions, in English or French |
+
+### Reach (estimate)
+
+Assumptions, not measured yet: one teacher runs **2 sessions a week** with **25 learners** each.
+
+- **50 people per teacher per week** complete their first self-custodial transaction, about 2,600 a year.
+- The faucet costs **10,000 practice sats per learner**; a 1,000,000-sat faucet covers ~95 learners and is refilled free from a signet faucet.
+- Infrastructure on the free tiers of Vercel and Upstash; AI tutor cost estimated at a fraction of a cent per class on the cheapest models.
+
+### Metrics to track
+
+| Metric | Why | Where it comes from |
+|---|---|---|
+| Learners onboarded per session | Reach | Teacher board: joined count |
+| % completing every mission | Learning, not just signing up | Board totals |
+| % passing the backup check first try | Seed-safety habit | Backup mission |
+| Median time to first transaction | Friction | Join → first send timestamps |
+| Tutor questions per learner, top topics | What confuses people | Tutor requests (no content stored today) |
+| Sessions per teacher per month | Retention of teachers | Classes created |
+
 ## How it works
 
 ### Architecture
@@ -159,6 +192,18 @@ Open <http://localhost:3000>, or `http://<your-computer-ip>:3000` from phones on
 | `lnd-shop` | Shop Lightning node: issues the café Touba invoices |
 | `app` | The web app on port 3000 |
 
+### Happy path (5 minutes)
+
+1. Teacher opens **/teach**, names the class, and shows the QR code.
+2. Each learner scans it, taps **Create wallet**, writes down 12 words, sets a PIN and picks a nickname.
+3. **Mission 1:** tap **Get sats**: 10,000 practice sats arrive.
+4. **Mission 2:** retype 3 random words from the paper backup.
+5. **Mission 3:** open **Send**, tap a classmate's name, send 1,000 sats.
+6. **Mission 4 (Docker):** open **Lightning**, order a café Touba, pay the invoice, see the receipt.
+7. Teacher watches the board fill with ticks. Learners ask **Ask Sats** "Why did I pay a fee?"
+
+Seed data: on start, `seed` funds the faucet and mines blocks; the Lightning channel opens automatically on the first Lightning request.
+
 ### Option B: hosted on Vercel (signet)
 
 Vercel can't run a Bitcoin node, so the hosted app uses the **Esplora** backend against [Mutinynet](https://mutinynet.com), a public signet with ~30-second blocks.
@@ -184,6 +229,27 @@ Vercel can't run a Bitcoin node, so the hosted app uses the **Esplora** backend 
 | `EXPLORER_URL` | | optional | Defaults to Mutinynet on Esplora |
 | `TUTOR_MODEL` | | optional | Pin an AI Gateway model; otherwise the first allowed model is used |
 | `AI_GATEWAY_API_KEY` | | optional | Only needed outside Vercel; on Vercel the project's OIDC token is used |
+
+## Constraints
+
+- **Practice networks only** (signet, regtest). Not built or audited for real bitcoin.
+- **6-digit PIN** protects the seed on the device; weak against an attacker who copies browser storage (see [THREAT_MODEL.md](THREAT_MODEL.md)).
+- **One receive address per wallet** to keep things simple for beginners; this reuses addresses, which is bad practice on mainnet.
+- **Lightning is custodial for the lesson**: the class node holds learners' practice Lightning balances. On-chain wallets stay self-custodial. Hidden on the hosted demo, which has no Lightning node.
+- **First load is ~444 KB compressed** (348 KB JavaScript, mostly Bitcoin libraries, 88 KB fonts, no images), measured on the live site; roughly 5 s on slow 3G, then cached.
+- **The hosted faucet depends on Mutinynet** and the AI tutor on Vercel AI Gateway.
+- **Classes expire after 48 hours.**
+- **Not yet tested** with a real class or on low-end Android devices.
+
+## Next iteration
+
+1. **Run real classes** with Bitcoin educators and measure the metrics above.
+2. **Lighter first load**: lazy-load the wallet libraries after the welcome screen, English-only wordlist (target under 200 KB).
+3. **Passkey unlock** instead of a 6-digit PIN.
+4. **Wolof**, reviewed by native speakers.
+5. **Offline-friendly PWA**: works after the first visit even with no data.
+6. **Hosted Lightning node** so mission 4 runs on the public demo.
+7. **Teacher export**: a simple attendance and completion report per class.
 
 ## Project structure
 
@@ -214,9 +280,9 @@ An **end-to-end integration test** also boots the full Docker stack (Bitcoin Cor
 
 ## Security
 
-Practice networks only. The full threat model, known limits and how to report a vulnerability are in [SECURITY.md](SECURITY.md).
+Practice networks only. See the [threat model](THREAT_MODEL.md) (assets, STRIDE threats, mitigations, residual risk) and [SECURITY.md](SECURITY.md) (design choices, how to report).
 
-## Roadmap
+## Built so far
 
 - [x] Self-custodial browser wallet (create, restore, receive, send)
 - [x] Class faucet with shared rate limits
