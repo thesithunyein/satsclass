@@ -727,7 +727,7 @@ export default function Home() {
             {chat.map((m, i) => (
               <div key={i} className={`bubble ${m.role} ${m.err ? "err" : ""}`}>
                 {m.role === "assistant" && <span className="bubble-avatar"><LogoMark size={28} /></span>}
-                <p>{m.content}</p>
+                <p>{m.content.replace(/\*\*(.+?)\*\*/g, "$1").replace(/^\s*[*-]\s+/gm, "• ")}</p>
               </div>
             ))}
             {thinking && (
