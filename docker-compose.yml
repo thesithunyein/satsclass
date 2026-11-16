@@ -1,0 +1,84 @@
+# SatsClass local stack: Bitcoin Core (regtest) + LND + seed/miner + web app.
+# Start everything with:  docker compose up --build
+services:
+  bitcoind:
+    image: bitcoin/bitcoin:29
+    entrypoint: ["bitcoind"]
+    command:
+      - -regtest=1
+      - -server=1
+      - -txindex=1
+      - -datadir=/data
+      - -printtoconsole=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=${BTC_RPC_USER}
+      - -rpcpassword=${BTC_RPC_PASS}
+      - -fallbackfee=0.0002
+      - -zmqpubrawblock=tcp://0.0.0.0:28332
+      - -zmqpubrawtx=tcp://0.0.0.0:28333
+    volumes:
+      - bitcoind-data:/data
+    healthcheck:
+      test: ["CMD", "bitcoin-cli", "-regtest", "-datadir=/data", "-rpcuser=${BTC_RPC_USER}", "-rpcpassword=${BTC_RPC_PASS}", "getblockchaininfo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Creates the class faucet wallet, mines 101 blocks so it has spendable coins,
+  # then mines one block every BLOCK_INTERVAL seconds so learners see confirmations.
+  seed:
+    image: bitcoin/bitcoin:29
+    entrypoint: ["sh", "/scripts/seed.sh"]
+    environment:
+      BTC_RPC_USER: ${BTC_RPC_USER}
+      BTC_RPC_PASS: ${BTC_RPC_PASS}
+      BLOCK_INTERVAL: ${BLOCK_INTERVAL:-10}
+    volumes:
+      - ./scripts:/scripts:ro
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Class Lightning node. Used from mission 5 (Day 3 of the plan).
+  lnd:
+    image: lightninglabs/lnd:v0.21.8-beta
+    command:
+      - --bitcoin.regtest
+      - --bitcoin.node=bitcoind
+      - --bitcoind.rpchost=bitcoind:18443
+      - --bitcoind.rpcuser=${BTC_RPC_USER}
+      - --bitcoind.rpcpass=${BTC_RPC_PASS}
+      - --bitcoind.zmqpubrawblock=tcp://bitcoind:28332
+      - --bitcoind.zmqpubrawtx=tcp://bitcoind:28333
+      - --noseedbackup
+      - --rpclisten=0.0.0.0:10009
+      - --restlisten=0.0.0.0:8080
+      - --tlsextradomain=lnd
+      - --alias=satsclass-class-node
+    volumes:
+      - lnd-data:/root/.lnd
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+    restart: unless-stopped
+
+  app:
+    build: ./app
+    environment:
+      BTC_NETWORK: regtest
+      BTC_RPC_URL: http://bitcoind:18443
+      BTC_RPC_USER: ${BTC_RPC_USER}
+      BTC_RPC_PASS: ${BTC_RPC_PASS}
+      FAUCET_WALLET: faucet
+      FAUCET_AMOUNT_BTC: ${FAUCET_AMOUNT_BTC:-0.001}
+    ports:
+      - "3000:3000"
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+
+volumes:
+  bitcoind-data:
+  lnd-data:
