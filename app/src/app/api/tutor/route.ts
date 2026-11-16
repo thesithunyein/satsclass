@@ -7,7 +7,17 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const GATEWAY = "https://ai-gateway.vercel.sh/v1/chat/completions";
-const MODEL = process.env.TUTOR_MODEL ?? "anthropic/claude-haiku-5.5";
+// First model the account can use wins. Free-tier AI Gateway accounts can't use every model,
+// so we fall back to cheaper ones on 403. Set TUTOR_MODEL to pin one.
+const MODELS = [
+  process.env.TUTOR_MODEL,
+  "anthropic/claude-haiku-5.5",
+  "google/gemini-2.5-flash-lite",
+  "google/gemini-2.5-flash",
+  "deepseek/deepseek-v4-flash",
+  "alibaba/qwen3.5-flash",
+].filter((m): m is string => Boolean(m));
+let workingModel: string | null = null; // remembered per warm instance
 const WORDS = new Set(bip39.wordlists.english);
 
 /** Looks like someone pasted their recovery phrase: 8+ BIP39 words in a row-ish. Never send that to an AI. */
@@ -87,24 +97,30 @@ export async function POST(req: Request) {
         .filter((m) => m.role !== "user" || !looksLikeSeed(m.content))
     : [];
 
+  const messages = [{ role: "system", content: systemPrompt(lang, serverNetName(), txs, balance) }, ...history, { role: "user", content: question }];
+  const order = workingModel ? [workingModel, ...MODELS.filter((m) => m !== workingModel)] : MODELS;
   try {
-    const res = await fetch(GATEWAY, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 400,
-        messages: [{ role: "system", content: systemPrompt(lang, serverNetName(), txs, balance) }, ...history, { role: "user", content: question }],
-      }),
-    });
-    if (!res.ok) {
-      console.error("tutor gateway status", res.status, (await res.text()).slice(0, 300));
-      return Response.json({ error: "tutor_unavailable" }, { status: 502 });
+    for (const model of order) {
+      const res = await fetch(GATEWAY, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model, max_tokens: 400, messages }),
+      });
+      if (res.status === 403 || res.status === 404) {
+        console.warn("tutor model unavailable", model, res.status);
+        continue;
+      }
+      if (!res.ok) {
+        console.error("tutor gateway status", model, res.status, (await res.text()).slice(0, 300));
+        return Response.json({ error: "tutor_unavailable" }, { status: 502 });
+      }
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const answer = data.choices?.[0]?.message?.content?.trim();
+      if (!answer) return Response.json({ error: "tutor_unavailable" }, { status: 502 });
+      workingModel = model;
+      return Response.json({ answer });
     }
-    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const answer = data.choices?.[0]?.message?.content?.trim();
-    if (!answer) return Response.json({ error: "tutor_unavailable" }, { status: 502 });
-    return Response.json({ answer });
+    return Response.json({ error: "tutor_unavailable" }, { status: 502 });
   } catch {
     return Response.json({ error: "tutor_unavailable" }, { status: 502 });
   }
